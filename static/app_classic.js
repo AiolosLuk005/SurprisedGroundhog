@@ -130,11 +130,12 @@
     const recur=$("#recur")?.checked?1:0;
     const pageSize=Number($("#page_size")?.value||500)||500;
     const exts=Array.from($("#types")?.selectedOptions||[]).map(o=>o.value.toLowerCase()).join(",");
+    const cat=$("#category")?.value||"";
     const q=$("#q")?.value||"";
 
     // 递归参数兼容一揽子别名
     const recurAliases=`recursive=${recur}&recur=${recur}&deep=${recur}&r=${recur}&subdirs=${recur}&include_subdirs=${recur}&walk=${recur}`;
-    const params=`dir=${qs(dir)}&${recurAliases}&page=1&page_size=${pageSize}&exts=${qs(exts)}&ext=${qs(exts)}&q=${qs(q)}`;
+    const params=`dir=${qs(dir)}&${recurAliases}&page=1&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&exts=${qs(exts)}&ext=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
 
     let result=null,lastErr=null;
@@ -142,7 +143,9 @@
       try{
         const r=await fetch(u,{cache:"no-store"});
         if(!r.ok){ lastErr=new Error("HTTP "+r.status); continue; }
-        const j=await r.json(); result={ok:true,url:u,data:j}; break;
+        const j=await r.json();
+        if(!j.ok){ lastErr=new Error(j.error||"接口返回错误"); continue; }
+        result={ok:true,url:u,data:j}; break;
       }catch(e){ lastErr=e; }
     }
     if(!result){ alert("扫描失败："+(lastErr?lastErr:"接口不可用")); return; }

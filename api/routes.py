@@ -14,6 +14,27 @@ from core.mysql_log import get_mysql_conn, log_op
 
 bp = Blueprint("api", __name__)
 
+
+def _parse_recursive(params):
+    val = next(
+        (params.get(k) for k in (
+            "recursive",
+            "recur",
+            "deep",
+            "r",
+            "subdirs",
+            "include_subdirs",
+            "walk",
+        ) if params.get(k) is not None),
+        "1",
+    )
+    return str(val).strip().lower() not in ("0", "false", "no", "off")
+
+
+def _parse_types(params):
+    s = next((params.get(k) for k in ("types", "exts", "ext") if params.get(k)), "")
+    return s.split(",") if s else None
+
 @bp.get("/")
 def index_page():
     return render_template(
@@ -28,11 +49,11 @@ def index_page():
 def scan():
     scan_dir = request.args.get("dir", DEFAULT_SCAN_DIR)
     with_hash = request.args.get("hash", "0") == "1"
-    recursive = request.args.get("recursive", "1") == "1"
+    recursive = _parse_recursive(request.args)
     page = max(int(request.args.get("page", "1")), 1)
     page_size = max(int(request.args.get("page_size", str(PAGE_SIZE_DEFAULT))), 1)
     category = request.args.get("category")
-    types = request.args.get("types", "").split(",") if request.args.get("types") else None
+    types = _parse_types(request.args)
 
     if not is_under_allowed_roots(scan_dir):
         return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
@@ -48,9 +69,9 @@ def scan():
 def export_csv():
     scan_dir = request.args.get("dir", DEFAULT_SCAN_DIR)
     with_hash = request.args.get("hash", "0") == "1"
-    recursive = request.args.get("recursive", "1") == "1"
+    recursive = _parse_recursive(request.args)
     category = request.args.get("category")
-    types = request.args.get("types", "").split(",") if request.args.get("types") else None
+    types = _parse_types(request.args)
 
     if not is_under_allowed_roots(scan_dir):
         return "目录不在允许的根目录内", 400
@@ -81,9 +102,9 @@ def import_mysql():
 
     scan_dir = request.form.get("dir", DEFAULT_SCAN_DIR)
     with_hash = request.form.get("hash", "0") == "1"
-    recursive = request.form.get("recursive", "1") == "1"
+    recursive = _parse_recursive(request.form)
     category = request.form.get("category")
-    types = request.form.get("types", "").split(",") if request.form.get("types") else None
+    types = _parse_types(request.form)
 
     if not is_under_allowed_roots(scan_dir):
         return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
