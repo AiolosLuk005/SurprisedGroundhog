@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Surprised Groundhog V1.01</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js?v=ui-restore-20250817"></script>
+</head>
+<body>
+  <h1>Surprised Groundhog V1.01</h1>
+
+  <div>
+    <label>目录</label>
+    <input id="dirInput" type="text" placeholder="选择或手输一个目录" />
+    <button onclick="openDirModal()">选择目录</button>
+  </div>
+
+  <!-- 其他原有控件省略 ... -->
+
+  <!-- 目录选择模态框 -->
+  <div id="dirModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span id="dirClose" style="float:right;cursor:pointer;">&times;</span>
+      <h2>选择目录</h2>
+      <div id="dirHere">(从允许根目录开始)</div>
+      <ul id="dirList"></ul>
+      <div style="margin-top:10px;">
+        <button id="dirUp">上一级</button>
+        <button id="dirOk">使用此目录</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

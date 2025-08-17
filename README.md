@@ -1,0 +1,101 @@
+# Surprised Groundhog  
+
+一个轻量的本地文件整理与分析工具，基于 Flask + 前端网页交互。项目在不断迭代中形成了 **核心版、LAN 安全版、完整版、插件化版**，兼顾灵活性与安全性。  
+
+---
+
+## 功能特性  
+- **目录扫描**：支持包含/排除子目录  
+- **文件分类**：图片 / 视频 / 音频 / 文档 / 代码 / 压缩包 / 其他  
+- **关键词提取**：轻量版对 txt/md 提取，插件版支持多格式（PDF、Word、Excel、PPT、压缩包）  
+- **文件操作**：重命名 / 移动 / 删除  
+- **导出数据**：扫描结果可导出 CSV，存放到 `output/` 目录  
+- **多端访问**：局域网访问支持 LAN 安全版，防止误操作  
+- **插件化架构**：通过 `plugins/` 目录扩展文件解析逻辑  
+
+---
+
+## 项目结构  
+```
+core/
+  config.py, models.py, state.py
+  utils/iterfiles.py
+  extractors.py (回退实现)
+  extractors_patch.py (插件调度)
+  plugin_base.py, plugin_loader.py
+api/
+  routes.py
+plugins/
+  text_basic.py, pdf_basic.py, docx_basic.py, excel_basic.py, ppt_basic.py, archive_keywords.py
+config/
+  plugins.toml
+templates/
+  index.html
+static/
+  app.js, style.css, Logo.png
+output/
+  (CSV 导出结果)
+```
+
+---
+
+## 运行方式  
+
+### 基础运行  
+```bash
+pip install -r requirements.txt
+python app.py
+# 打开 http://127.0.0.1:5005/
+```
+
+### LAN 安全版  
+```bash
+python app_lan.py
+```
+- 默认仅提供扫描 + AI 接口，文件操作受限  
+- `/full/*` 路由仅允许本机访问（127.0.0.1 / ::1），确保外部无法操作本机文件  
+
+---
+
+## 插件系统（2025-08-17 引入）  
+- 插件位于 `plugins/` 目录，通过 `core/plugin_loader.py` 自动加载  
+- `config/plugins.toml` 控制插件启用与顺序  
+- 已内置插件：  
+  - `text_basic`：txt/md/rtf/log/json/yaml  
+  - `pdf_basic`：pdf（PyPDF2）  
+  - `docx_basic`：docx（python-docx）  
+  - `excel_basic`：xlsx/xls（openpyxl / xlrd*）  
+  - `ppt_basic`：pptx/ppt（python-pptx）  
+  - `archive_keywords`：zip/rar/7z（文件名关键词）  
+
+> 插件优先，未覆盖的类型仍由 `core/extractors.py` 兜底。  
+
+---
+
+## 使用场景  
+
+- **个人文件整理**：快速扫描硬盘目录，导出统计表  
+- **企业内部**：LAN 模式共享扫描界面，避免敏感数据外泄  
+- **开发者扩展**：通过插件快速增加新的文件解析器  
+
+---
+
+## 更新日志（节选）  
+
+### 稳定修正版（2025-08-17）  
+- 新增插件系统（`plugin_base.py`, `plugin_loader.py`）  
+- 文档/表格/幻灯片/压缩包等提取逻辑全部迁移为插件  
+- `api/routes.py` 调用 `extractors_patch`，自动选择插件或兜底  
+- 新增 `config/plugins.toml` 管理插件  
+
+### LAN 安全版 v2  
+- 目录选择优先使用 File System Access API  
+- 不满足安全上下文则回退到 `<input webkitdirectory>`  
+- UI 优化：类型选择多选框与类别联动  
+
+---
+
+## 常见问题  
+- **输入路径**：Windows 用 `D:\Work`，Linux/macOS 用 `/home/user/Work`  
+- **权限问题**：移动/删除操作可能需管理员权限  
+- **扩展名支持**：可在 `scanner.py` 或插件中扩展  

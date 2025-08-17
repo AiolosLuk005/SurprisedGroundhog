@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Surprised Groundhog（LAN / 本地扫描·加强版）</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .muted{color:#888;font-size:12px}
+    #types{min-width:220px;min-height:4.2em} /* 显示约2~3行 */
+    #pickFallback{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eee;margin-left:8px;font-size:12px}
+    table{width:100%}
+    th,td{padding:6px}
+    .right{margin-left:auto}
+  </style>
+</head>
+<body>
+  <h2>Surprised Groundhog（LAN / 本地扫描·加强版）</h2>
+  <p class="muted">
+    说明：扫描在<b>你的浏览器本地</b>完成；“导出 CSV/筛选/分页/关键词”等前端完成。
+    <br>“移动/重命名/回收站”依赖浏览器 <code>File System Access API</code>，仅在 <b>HTTPS 或 localhost</b> 下启用。
+  </p>
+
+  <div class="row">
+    <button id="pickBtn" class="btn">选择目录</button>
+    <input id="pickFallback" type="file" webkitdirectory multiple />
+    <span id="dirLabel" class="muted">未选择目录</span>
+
+    <label>类别</label>
+    <select id="category">
+      <option value="">全部</option>
+      <option value="TEXT">TEXT</option>
+      <option value="DATA">DATA</option>
+      <option value="SLIDES">SLIDES</option>
+      <option value="PDF">PDF</option>
+      <option value="IMAGE">IMAGE</option>
+      <option value="AUDIO">AUDIO</option>
+      <option value="VIDEO">VIDEO</option>
+    </select>
+
+    <label>类型</label>
+    <select id="types" multiple size="3"></select>
+
+    <label>每页</label>
+    <input id="pageSize" type="number" value="200" style="width:90px">
+    <button id="scan" class="btn">扫描所选目录</button>
+    <span id="count" class="pill">0 项</span>
+    <span id="secureBadge" class="pill">HTTP（已禁用本地改名/移动）</span>
+    <div class="right"></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="prev" class="btn">上一页</button>
+    <button id="next" class="btn">下一页</button>
+    <span id="pageInfo" class="muted"></span>
+    <input id="q" type="text" placeholder="搜索文件名/路径/后缀">
+    <input id="kwSeeds" type="text" placeholder="指定关键词（分号分隔）">
+    <button id="btnGenKW" class="btn">为选中文件生成关键词</button>
+    <button id="btnExportCSV" class="btn">导出CSV</button>
+    <button id="btnClearKW" class="btn">清空关键词</button>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>选</th><th>名称</th><th>相对路径</th><th>类型</th><th>分类</th><th>大小KB</th><th>修改时间</th><th>关键词/状态</th>
+        <th>移动到（子目录）</th><th>重命名为</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="toolbar">
+    <button id="btnMove" class="btn">批量移动</button>
+    <button id="btnRename" class="btn">批量重命名</button>
+    <button id="btnTrash" class="btn">移入回收站（.trash）</button>
+  </div>
+
+  <script src="/static/app_lan_plus.js?v=20250818"></script>
+</body>
+</html>

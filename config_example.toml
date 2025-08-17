@@ -1,0 +1,13 @@
+allowed_roots = ["D:/Data", "E:/Shared"]
+port = 5005
+enable_hash = false
+page_size_default = 200
+ollama = { enable = true, model = "qwen2.5:latest", timeout_sec = 30 }
+[mysql]
+enable = false
+host = "127.0.0.1"
+port = 3306
+user = "root"
+password = "your_password"
+database = "groundhog"
+trash_dir = ""

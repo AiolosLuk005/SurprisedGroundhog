@@ -1,0 +1,8 @@
+enabled = [
+  "archive_keywords",
+  "docx_basic",
+  "excel_basic",
+  "ppt_basic",
+  "pdf_basic",
+  "text_basic"
+]

@@ -1,0 +1,146 @@
+from pathlib import Path
+from PyPDF2 import PdfReader
+import openpyxl
+
+def extract_text_for_keywords(path: str, max_chars: int = 4000) -> str:
+    ext = Path(path).suffix.lower().lstrip(".")
+    try:
+        if ext in ("txt", "md", "rtf"):
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read(max_chars)
+
+        if ext == "docx":
+            from docx import Document as _DocxDocument
+            doc = _DocxDocument(path)
+            parts = []
+            for p in doc.paragraphs[:200]:
+                t = (p.text or "").strip()
+                if t:
+                    parts.append(t)
+                if sum(len(x) for x in parts) > max_chars:
+                    break
+            return "\n".join(parts)[:max_chars]
+
+        if ext == "pdf":
+            txt = []
+            reader = PdfReader(path)
+            for i, page in enumerate(reader.pages[:6]):
+                t = page.extract_text() or ""
+                txt.append(t)
+            return ("\n".join(txt))[:max_chars]
+
+        if ext in ("csv",):
+            import csv as _csv
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                rd = _csv.reader(f)
+                rows = []
+                for i, row in enumerate(rd):
+                    rows.append(",".join(row))
+                    if i >= 10: break
+            return "\n".join(rows)
+
+        if ext in ("xlsx","xls"):
+            wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+            ws = wb.active
+            rows = []
+            for i, row in enumerate(ws.iter_rows(values_only=True)):
+                rows.append(",".join([str(x) if x is not None else "" for x in row]))
+                if i >= 10: break
+            return "\n".join(rows)
+
+        if ext in ("pptx", "ppt"):
+            return _extract_ppt_text(path, max_chars=max_chars)
+
+    except Exception as e:
+        return f"(read failed: {e})"
+    return ""
+
+def _extract_ppt_text(path: str, max_chars: int = 4000) -> str:
+    from pathlib import Path
+    import tempfile, subprocess, shutil, sys
+    p = Path(path)
+    ext = p.suffix.lower().lstrip(".")
+    try:
+        if ext == "pptx":
+            try:
+                from pptx import Presentation
+            except Exception as e:
+                return f"(read failed: python-pptx not installed: {e})"
+            prs = Presentation(path)
+            parts = []
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        t = (shape.text or "").strip()
+                        if t:
+                            parts.append(t)
+                            if sum(len(x) for x in parts) >= max_chars:
+                                return "\n".join(parts)[:max_chars]
+                for shape in slide.shapes:
+                    if getattr(shape, "has_table", False):
+                        try:
+                            tbl = shape.table
+                            for r in tbl.rows:
+                                row_txt = []
+                                for cell in r.cells:
+                                    txt = (cell.text or "").strip()
+                                    if txt:
+                                        row_txt.append(txt)
+                                if row_txt:
+                                    parts.append(" | ".join(row_txt))
+                                    if sum(len(x) for x in parts) >= max_chars:
+                                        return "\n".join(parts)[:max_chars]
+                        except Exception:
+                            pass
+            return "\n".join(parts)[:max_chars]
+
+        elif ext == "ppt":
+            pptx_path = _convert_ppt_to_pptx(path)
+            if pptx_path and Path(pptx_path).exists():
+                return _extract_ppt_text(pptx_path, max_chars=max_chars)
+            pptx_path = _convert_ppt_to_pptx_com(path)
+            if pptx_path and Path(pptx_path).exists():
+                return _extract_ppt_text(pptx_path, max_chars=max_chars)
+            return Path(path).stem.replace("_"," ").replace("-"," ")[:max_chars]
+
+        else:
+            return Path(path).stem.replace("_"," ").replace("-"," ")[:max_chars]
+
+    except Exception as e:
+        return f"(read failed: {e})"
+
+def _convert_ppt_to_pptx(src_path: str):
+    import tempfile, subprocess, shutil
+    try:
+        if shutil.which("soffice") is None:
+            return None
+        tmpdir = tempfile.mkdtemp(prefix="ppt2pptx_")
+        cmd = ["soffice", "--headless", "--convert-to", "pptx", "--outdir", tmpdir, src_path]
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+        from pathlib import Path
+        out = Path(tmpdir) / (Path(src_path).stem + ".pptx")
+        return str(out) if out.exists() else None
+    except Exception:
+        return None
+
+def _convert_ppt_to_pptx_com(src_path: str):
+    import sys, tempfile
+    try:
+        if sys.platform != "win32":
+            return None
+        try:
+            import win32com.client  # type: ignore
+        except Exception:
+            return None
+        from pathlib import Path
+        tmpdir = tempfile.mkdtemp(prefix="ppt2pptx_com_")
+        out = str(Path(tmpdir) / (Path(src_path).stem + ".pptx"))
+        powerpoint = win32com.client.Dispatch("PowerPoint.Application")
+        powerpoint.Visible = 0
+        pres = powerpoint.Presentations.Open(src_path, WithWindow=False)
+        pres.SaveAs(out, 24)  # ppSaveAsOpenXMLPresentation
+        pres.Close()
+        powerpoint.Quit()
+        return out if Path(out).exists() else None
+    except Exception:
+        return None

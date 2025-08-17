@@ -1,0 +1,16 @@
+# 忽略常见的虚拟环境文件夹
+venv/
+.venv/
+env/
+# 忽略 VS Code 的設定資料夾
+.vscode/
+
+# 忽略快取資料夾
+__pycache__/
+
+# 忽略所有的 .log 文件
+*.log
+
+# 忽略输出文件夹
+output/
+

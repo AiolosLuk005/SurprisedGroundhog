@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Surprised Groundhog · 资料整理 · V1.0 </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* 目录选择弹窗 */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;z-index:9999}
+    .modal-content{width:760px;max-width:92vw;margin:10vh auto;background:#fff;border-radius:10px;
+      box-shadow:0 16px 48px rgba(0,0,0,.18);padding:10px 12px}
+    .modal-head,.modal-foot{display:flex;align-items:center;justify-content:space-between;padding:6px 4px}
+    .modal-body{max-height:64vh;overflow:auto;padding:6px 2px}
+    #dirList{list-style:none;margin:0;padding:0}
+    #dirList li{padding:8px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer}
+    #dirList li:hover{background:#f7f7f7}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h2 class="brand">Surprised Groundhog · 资料整理 · V1.0</h2>
+    <img class="logo" src="/static/logo.png" alt="logo">
+  </div>
+
+  <div class="row">
+    <label for="category">档案种类：</label>
+    <select id="category">
+      <option value="TEXT">文字档案</option>
+      <option value="DATA">数据档案</option>
+      <option value="SLIDES">简报档案</option>
+      <option value="PDF">PDF 档案</option>
+      <option value="ARCHIVE">压缩档案</option>
+      <option value="IMAGE">图片档案</option>
+      <option value="VIDEO">视频档案</option>
+      <option value="AUDIO">音频档案</option>
+    </select>
+
+    <label for="types">档案类型（可多选）：</label>
+    <select id="types" multiple size="6" style="min-width: 160px;"></select>
+
+    <label for="dir">扫描目录：</label>
+    <input id="dir" type="text" placeholder="请选择要扫描的目录…" style="min-width: 420px;">
+    <button class="btn" id="pickDir">选择目录</button>
+
+    <label class="pill"><input id="hash" type="checkbox"> 计算 SHA256</label>
+    <label class="pill"><input id="recur" type="checkbox" checked> 包含子文件夹</label>
+
+    <label>分页：</label>
+    <input id="page_size" type="number" value="500" min="10" max="10000">
+    <button class="btn" id="scanBtn">开始扫描</button>
+    <span id="count" class="muted right">未扫描</span>
+  </div>
+
+  <div class="toolbar">
+    <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
+    <button class="btn" id="exportBtn">导出 CSV</button>
+    <button class="btn" id="importBtn">导入 MySQL</button>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th style="width:42px;">选</th>
+        <th>文件名</th>
+        <th>完整路径</th>
+        <th>扩展名</th>
+        <th>类别</th>
+        <th>大小（kB）</th>
+        <th>修改时间</th>
+        <th>关键词</th>
+        <th>移动目标</th>
+        <th>重命名为</th>
+        <th>预览</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="row">
+    <button class="btn" id="prev">上一页</button>
+    <span id="pageinfo" class="muted"></span>
+    <button class="btn" id="next">下一页</button>
+  </div>
+
+  <!-- 目录选择弹窗（基于 /ls） -->
+  <div id="dirModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-head">
+        <strong>选择目录</strong>
+        <button class="btn btn-sm" id="dirClose">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="row" style="padding:0 0 10px 0;">
+          <button class="btn btn-sm" id="dirUp">上一级</button>
+          <span id="dirHere" class="small"></span>
+        </div>
+        <ul id="dirList"></ul>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="dirOk">使用此目录</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app_classic.js?v=picker-recursive-path-20250818c"></script>
+</body>
+</html>
