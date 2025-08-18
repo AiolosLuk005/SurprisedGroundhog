@@ -13,6 +13,14 @@
   const $=s=>document.querySelector(s);
   const $$=s=>Array.from(document.querySelectorAll(s));
   const qs=v=>encodeURIComponent(v||"");
+  function toggleLoading(on, msg){
+    const el = document.getElementById("loading");
+    if(!el) return;
+    const txt = el.querySelector(".loading-text");
+    if(txt) txt.textContent = msg || "正在处理，请稍候…";
+    if(on) el.classList.add("show"); else el.classList.remove("show");
+  }
+
 
   function humanKBFromBytes(n){ if(n==null||isNaN(n))return ""; return (Number(n)/1024).toFixed(1); }
   function humanKBFromAny(v){
@@ -102,7 +110,9 @@
     async function refresh(){
       here.textContent=cwd||"(根)";
       const urls=PATHS.ls.map(u=>u+(cwd?("?dir="+qs(cwd)):""));
+      toggleLoading(true, "读取目录…");
       const res=await firstOK(urls);
+      toggleLoading(false);
       if(!res.ok){ list.innerHTML="<li>目录列举失败</li>"; return; }
       try{
         const j=await res.r.json();
@@ -130,11 +140,12 @@
     const recur=$("#recur")?.checked?1:0;
     const pageSize=Number($("#page_size")?.value||500)||500;
     const exts=Array.from($("#types")?.selectedOptions||[]).map(o=>o.value.toLowerCase()).join(",");
+    const cat=$("#category")?.value||"";
     const q=$("#q")?.value||"";
 
     // 递归参数兼容一揽子别名
     const recurAliases=`recursive=${recur}&recur=${recur}&deep=${recur}&r=${recur}&subdirs=${recur}&include_subdirs=${recur}&walk=${recur}`;
-    const params=`dir=${qs(dir)}&${recurAliases}&page=1&page_size=${pageSize}&exts=${qs(exts)}&ext=${qs(exts)}&q=${qs(q)}`;
+    const params=`dir=${qs(dir)}&${recurAliases}&page=1&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&exts=${qs(exts)}&ext=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
 
     let result=null,lastErr=null;
@@ -142,7 +153,9 @@
       try{
         const r=await fetch(u,{cache:"no-store"});
         if(!r.ok){ lastErr=new Error("HTTP "+r.status); continue; }
-        const j=await r.json(); result={ok:true,url:u,data:j}; break;
+        const j=await r.json();
+        if(!j.ok){ lastErr=new Error(j.error||"接口返回错误"); continue; }
+        result={ok:true,url:u,data:j}; break;
       }catch(e){ lastErr=e; }
     }
     if(!result){ alert("扫描失败："+(lastErr?lastErr:"接口不可用")); return; }

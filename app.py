@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
-from flask import Flask
-from api.routes import bp as api_bp
+# 仅本机访问（localhost），适合开发调试
+from app_unified import create_app
 from core.config import PORT
-
-def create_app():
-    app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.register_blueprint(api_bp)
-    return app
 
 if __name__ == "__main__":
     app = create_app()
