@@ -1,5 +1,6 @@
 # Surprised Groundhog  
 
+A lightweight local file organization and analysis tool, based on Flask with front-end web interaction. The project has evolved through iterations into a core version, LAN secure version, full version, and modular version, balancing flexibility and security.
 一个轻量的本地文件整理与分析工具，基于 Flask + 前端网页交互。项目在不断迭代中形成了 **核心版、LAN 安全版、完整版、插件化版**，兼顾灵活性与安全性。  
 
 ---
