@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>Surprised Groundhog · V1.01 </title>
+  <title>Surprised Groundhog · V1.01</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/style.css">
   <style>
@@ -38,7 +38,7 @@
   }
   @keyframes spin{ to{ transform: rotate(360deg); } }
 
-  /* 如果想改成“沙漏”，把 .spinner 的 class 改成 .spinner.hourglass 即可 */
+  /* 沙漏 */
   .spinner.hourglass{
     width: 24px; height: 24px; border:0; position:relative;
   }
@@ -51,12 +51,23 @@
   .spinner.hourglass:after{ bottom:0; border-top:14px solid #111827; animation-delay:.6s; }
   @keyframes flip{ 0%,100%{ transform: scaleY(1);} 50%{ transform: scaleY(0.2);} }
   .loading-text { font-size: 12px; color:#444; }
-</style>
 
+  /* 确认 / 预览弹窗 */
+  .confirm-modal, .preview-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 10000;
+    align-items: center; justify-content: center;
+  }
+  .confirm-modal-content, .preview-modal-content {
+    background: #fff; padding: 20px; border-radius: 8px; max-width: 500px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center;
+  }
+  .preview-content { max-width: 100%; max-height: 80vh; overflow: auto; }
+  .preview-content img, .preview-content video { max-width: 100%; height: auto; }
+  </style>
 </head>
 <body>
   <div class="topbar">
-    <h2 class="brand">Surprised Groundhog · V1.01 </h2>
+    <h2 class="brand">Surprised Groundhog · V1.01</h2>
     <img class="logo" src="/static/logo.png" alt="logo">
   </div>
 
@@ -77,14 +88,14 @@
     <select id="types" multiple size="6" style="min-width: 160px;"></select>
 
     <label for="dir">扫描目录：</label>
-    <input id="dir" type="text" placeholder="请选择要扫描的目录…" style="min-width: 420px;">
+    <input id="dir" type="text" value="{{ default_dir }}" placeholder="请选择要扫描的目录…" style="min-width: 420px;">
     <button class="btn" id="pickDir">选择目录</button>
 
-    <label class="pill"><input id="hash" type="checkbox"> 计算 SHA256</label>
+    <label class="pill"><input id="hash" type="checkbox" {% if enable_hash_default %}checked{% endif %}> 计算 SHA256</label>
     <label class="pill"><input id="recur" type="checkbox" checked> 包含子文件夹</label>
 
     <label>分页：</label>
-    <input id="page_size" type="number" value="500" min="10" max="10000">
+    <input id="page_size" type="number" value="{{ page_size_default }}" min="10" max="10000">
     <button class="btn" id="scanBtn">开始扫描</button>
     <span id="count" class="muted right">未扫描</span>
   </div>
@@ -93,6 +104,14 @@
     <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
     <button class="btn" id="exportBtn">导出 CSV</button>
     <button class="btn" id="importBtn">导入 MySQL</button>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn" id="genKwBtn">提取关键词</button>
+    <button class="btn" id="clearKwBtn">清除关键词</button>
+    <button class="btn" id="applyMoveBtn">批量移动</button>
+    <button class="btn" id="applyRenameBtn">批量重命名</button>
+    <button class="btn" id="applyDeleteBtn">批量删除</button>
   </div>
 
   <table id="tbl">
@@ -120,7 +139,7 @@
     <button class="btn" id="next">下一页</button>
   </div>
 
-  <!-- 目录选择弹窗（基于 /ls） -->
+  <!-- 目录选择弹窗 -->
   <div id="dirModal" class="modal">
     <div class="modal-content">
       <div class="modal-head">
@@ -140,14 +159,35 @@
     </div>
   </div>
 
-    <!-- 全局加载层：默认隐藏。把 hourglass 去掉就是转圈圈；保留 hourglass 就是沙漏效果 -->
+  <!-- 确认弹窗 -->
+  <div id="confirmModal" class="confirm-modal" style="display:none;">
+    <div class="confirm-modal-content">
+      <p id="confirmMessage"></p>
+      <div style="margin-top: 20px;">
+        <button class="btn" id="confirmOk">确认</button>
+        <button class="btn" id="confirmCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 预览弹窗 -->
+  <div id="previewModal" class="preview-modal" style="display:none;">
+    <div class="preview-modal-content">
+      <div class="modal-head">
+        <strong id="previewTitle"></strong>
+        <button class="btn btn-sm" id="previewClose">关闭</button>
+      </div>
+      <div id="previewContent" class="preview-content"></div>
+    </div>
+  </div>
+
+  <!-- 全局加载层 -->
   <div id="loading" class="loader" aria-hidden="true">
-    <div class="spinner hourglass"></div>  <!-- 或者：<div class="spinner hourglass"></div> -->
+    <div class="spinner hourglass"></div>
     <div class="loading-text">正在处理，请稍候…</div>
   </div>
 
-  <script src="/static/app_classic.js?v=picker-recursive-path-20250818c"></script>
-
-
+  <!-- 带版本号避免缓存 -->
+  <script src="/static/app_classic.js?v=20250818d"></script>
 </body>
 </html>

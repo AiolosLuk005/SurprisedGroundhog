@@ -2,28 +2,44 @@ from flask import Blueprint, render_template, request, jsonify, send_file, send_
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-import os, io, csv
+import os, io, csv, shutil
 from PIL import Image
+from send2trash import send2trash
 
 from core.config import ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT, MYSQL_ENABLED, TRASH_DIR
-from core.utils.iterfiles import is_under_allowed_roots, iter_files
+from core.utils.iterfiles import is_under_allowed_roots, iter_files  # 依然复用你的核心扫描逻辑
 from core.extractors import extract_text_for_keywords
 from core.ollama import call_ollama_keywords
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
 
-bp = Blueprint("api", __name__)
+bp = Blueprint("full_api", __name__)
 
+# -------------------- 本地分类（含 zip/rar/7z ） --------------------
+# 仅用于关键词分支判断，保证不依赖外部 detect_category 也能识别 ARCHIVE
+CATEGORIES_LOCAL = {
+    "TEXT":   {"docx","doc","txt","md"},
+    "DATA":   {"xlsx","xlsm","xls","csv","xml"},
+    "SLIDES": {"pptx","ppt"},
+    "ARCHIVE":{"zip","rar","7z"},
+    "PDF":    {"pdf"},
+    "IMAGE":  {"jpg","jpeg","gif","png","tif","tiff","bmp","svg","webp"},
+    "AUDIO":  {"mp3","wav","flac","m4a","aac","ogg"},
+    "VIDEO":  {"mp4","mkv","avi","mov","wmv","webm"},
+}
+def _detect_category_local(ext: str) -> str:
+    e = (ext or "").lower().lstrip(".")
+    for cat, exts in CATEGORIES_LOCAL.items():
+        if e in exts:
+            return cat
+    return "TEXT"
+
+# -------------------- 参数解析 --------------------
 def _parse_recursive(params):
     val = next(
         (params.get(k) for k in (
-            "recursive",
-            "recur",
-            "deep",
-            "r",
-            "subdirs",
-            "include_subdirs",
-            "walk",
+            "recursive", "recur", "deep", "r",
+            "subdirs", "include_subdirs", "walk"
         ) if params.get(k) is not None),
         "1",
     )
@@ -33,6 +49,7 @@ def _parse_types(params):
     s = next((params.get(k) for k in ("types", "exts", "ext") if params.get(k)), "")
     return s.split(",") if s else None
 
+# -------------------- 页面 --------------------
 @bp.get("/")
 def index_page():
     return render_template(
@@ -43,35 +60,33 @@ def index_page():
         page_size_default=PAGE_SIZE_DEFAULT
     )
 
+# -------------------- 文件扫描 --------------------
 @bp.get("/scan")
 def scan():
-    scan_dir = request.args.get("dir", DEFAULT_SCAN_DIR)
-    with_hash = request.args.get("hash", "0") == "1"
-    recursive = request.args.get("recursive", "0") == "1"
-    recursive = _parse_recursive(request.form)
-    page = max(int(request.args.get("page", "1")), 1)
-    page_size = max(int(request.args.get("page_size", str(PAGE_SIZE_DEFAULT))), 1)
-    category = request.args.get("category")
-    types = _parse_types(request.args)
+    scan_dir = request.values.get("dir", DEFAULT_SCAN_DIR)
+    with_hash = request.values.get("hash", "0") == "1"
+    recursive = _parse_recursive(request.values)
+    page = max(int(request.values.get("page", "1")), 1)
+    page_size = max(int(request.values.get("page_size", str(PAGE_SIZE_DEFAULT))), 1)
+    category = request.values.get("category")
+    types = _parse_types(request.values)
 
     if not is_under_allowed_roots(scan_dir):
         return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
 
     rows = [asdict(r) for r in iter_files(scan_dir, with_hash, category, types, recursive)]
     total = len(rows)
-    start = (page - 1) * page_size
-    end = start + page_size
-    page_rows = rows[start:end]
-    return jsonify({"ok": True, "data": page_rows, "total": total})
+    start, end = (page - 1) * page_size, (page * page_size)
+    return jsonify({"ok": True, "data": rows[start:end], "total": total})
 
+# -------------------- 导出 CSV --------------------
 @bp.get("/export_csv")
 def export_csv():
-    scan_dir = request.args.get("dir", DEFAULT_SCAN_DIR)
-    with_hash = request.args.get("hash", "0") == "1"
-    recursive = request.args.get("recursive", "0") == "1"
-    recursive = _parse_recursive(request.args)
-    category = request.args.get("category")
-    types = _parse_types(request.args)
+    scan_dir = request.values.get("dir", DEFAULT_SCAN_DIR)
+    with_hash = request.values.get("hash", "0") == "1"
+    recursive = _parse_recursive(request.values)
+    category = request.values.get("category")
+    types = _parse_types(request.values)
 
     if not is_under_allowed_roots(scan_dir):
         return "目录不在允许的根目录内", 400
@@ -80,7 +95,7 @@ def export_csv():
     output_dir = project_root / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    base = os.path.basename(scan_dir.rstrip("\/")) or "root"
+    base = os.path.basename(scan_dir.rstrip("\\/")) or "root"
     filename = f"groundhog_{base}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     filepath = output_dir / filename
 
@@ -90,27 +105,27 @@ def export_csv():
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for row in iter_files(scan_dir, with_hash, category, types, recursive):
-            d = asdict(row); d.pop("previewable", None)
+            d = asdict(row)
+            d.pop("previewable", None)  # 防止 DictWriter 报错
             writer.writerow({k: d.get(k) for k in fieldnames})
 
     return send_file(str(filepath), as_attachment=True, download_name=filename, mimetype="text/csv")
 
+# -------------------- 导入 MySQL --------------------
 @bp.post("/import_mysql")
 def import_mysql():
     if not MYSQL_ENABLED:
         return jsonify({"ok": False, "error": "MySQL 未启用"}), 400
 
-    scan_dir = request.form.get("dir", DEFAULT_SCAN_DIR)
-    with_hash = request.form.get("hash", "0") == "1"
-    recursive = _parse_recursive(request.form)
-    recursive = request.form.get("recursive", "0") == "1"
-    category = request.form.get("category")
-    types = _parse_types(request.form)
+    scan_dir = request.values.get("dir", DEFAULT_SCAN_DIR)
+    with_hash = request.values.get("hash", "0") == "1"
+    recursive = _parse_recursive(request.values)
+    category = request.values.get("category")
+    types = _parse_types(request.values)
 
     if not is_under_allowed_roots(scan_dir):
         return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
 
-    import mysql.connector
     conn = get_mysql_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -146,35 +161,15 @@ def import_mysql():
     cur.close(); conn.close()
     return jsonify({"ok": True, "inserted": count})
 
-@bp.get("/ls")
-def ls():
-    base = request.args.get("dir", "")
-    if not base:
-        return jsonify({"ok": True, "dir": "", "subs": ALLOWED_ROOTS})
-    if not is_under_allowed_roots(base):
-        return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
-
-    try:
-        subs = []
-        for name in os.listdir(base):
-            p = os.path.join(base, name)
-            if os.path.isdir(p):
-                subs.append(os.path.abspath(p))
-        subs.sort()
-        return jsonify({"ok": True, "dir": base, "subs": subs})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
+# -------------------- 关键词管理 --------------------
 @bp.post("/update_keywords")
 def update_keywords():
     data = request.get_json(silent=True) or {}
     updates = data.get("updates", [])
-    if "keywords" not in STATE:
-        STATE["keywords"] = {}
+    STATE.setdefault("keywords", {})
     saved = 0
     for u in updates:
-        p = u.get("path")
-        kw = (u.get("keywords") or "").strip()
+        p, kw = u.get("path"), (u.get("keywords") or "").strip()
         if p and is_under_allowed_roots(p):
             STATE["keywords"][p] = kw
             saved += 1
@@ -185,8 +180,7 @@ def update_keywords():
 def clear_keywords():
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
-    if "keywords" not in STATE:
-        STATE["keywords"] = {}
+    STATE.setdefault("keywords", {})
     cleared = 0
     for p in paths:
         if p and is_under_allowed_roots(p) and p in STATE["keywords"]:
@@ -198,43 +192,46 @@ def clear_keywords():
 @bp.post("/keywords")
 def gen_keywords():
     data = request.get_json(silent=True) or {}
-    paths = data.get("paths", [])
-    seeds = (data.get("seeds") or "").strip()
+    paths, seeds = data.get("paths", []), (data.get("seeds") or "").strip()
     out = {}
-    if "keywords" not in STATE: STATE["keywords"] = {}
+    STATE.setdefault("keywords", {})
 
     for p in paths:
         if not is_under_allowed_roots(p):
             continue
         title = Path(p).name
         ext = Path(p).suffix.lower().lstrip(".")
-        from core.utils.iterfiles import detect_category
-        cat = detect_category(ext)
-        if cat in ("TEXT","DATA","PDF","SLIDES"):
+        cat = _detect_category_local(ext)  # ← 使用本地分类，已包含 ARCHIVE
+
+        if cat in ("TEXT","DATA","PDF","SLIDES","ARCHIVE"):
+            # ARCHIVE（zip/rar/7z）在 extract_text_for_keywords 里已支持摘要抽取
             body = extract_text_for_keywords(p, max_chars=3000)
-            kw = call_ollama_keywords(title, body, max_total_chars=50, seeds=seeds)
+            kw = call_ollama_keywords(title, body, max_total_chars=50, seeds=seeds) or ""
             if not kw:
                 base = Path(p).stem.replace("_"," ").replace("-"," ")
                 prefix = (seeds + ", ") if seeds else ""
-                remain = max(0, 50 - len(prefix))
-                kw = prefix + base[:remain]
+                kw = prefix + base[:max(0, 50 - len(prefix))]
+        elif cat == "IMAGE":
+            kw = "图片关键词提取功能待实现"
+        elif cat == "AUDIO":
+            kw = "音频关键词提取功能待实现"
         else:
             base = Path(p).stem
             prefix = (seeds + ", ") if seeds else ""
-            remain = max(0, 50 - len(prefix))
-            kw = prefix + base[:remain]
+            kw = prefix + base[:max(0, 50 - len(prefix))]
+
         kw = kw[:50]
         out[p] = kw
         STATE["keywords"][p] = kw
+
     save_state()
     return jsonify({"ok": True, "keywords": out})
 
+# -------------------- 文件操作 --------------------
 @bp.post("/apply_ops")
 def apply_ops():
-    from send2trash import send2trash
     data = request.get_json(silent=True) or {}
-    ops = data.get("ops", [])
-    done, errors = 0, []
+    ops, done, errors = data.get("ops", []), 0, []
 
     for op in ops:
         try:
@@ -243,15 +240,7 @@ def apply_ops():
                 src = op.get("path")
                 if not (src and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
-                try:
-                    send2trash(src)
-                except Exception:
-                    if TRASH_DIR:
-                        target = Path(TRASH_DIR).resolve() / Path(src).name
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        os.replace(src, str(target))
-                    else:
-                        raise RuntimeError("回收站删除失败，未配置 trash_dir，已取消操作")
+                send2trash(src)  # 始终回收站删除
                 log_op("delete", src_path=src)
                 done += 1
 
@@ -261,7 +250,7 @@ def apply_ops():
                     raise ValueError("路径不合法")
                 Path(dst_dir).mkdir(parents=True, exist_ok=True)
                 dst_full = str(Path(dst_dir) / Path(src).name)
-                os.replace(src, dst_full)
+                shutil.move(src, dst_full)
                 log_op("move", src_path=src, dst_path=dst_full)
                 done += 1
 
@@ -269,21 +258,20 @@ def apply_ops():
                 src, new_name = op.get("src"), op.get("new_name")
                 if not (src and new_name and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
-                dirpath = str(Path(src).parent)
-                dst_full = str(Path(dirpath) / new_name)
-                old_name = Path(src).name
-                os.replace(src, dst_full)
-                log_op("rename", src_path=src, dst_path=dst_full, old_name=old_name, new_name=new_name)
+                dst_full = str(Path(src).parent / new_name)
+                shutil.move(src, dst_full)
+                log_op("rename", src_path=src, dst_path=dst_full, old_name=Path(src).name, new_name=new_name)
                 done += 1
 
             else:
                 raise ValueError("未知操作")
 
         except Exception as e:
-            errors.append(str(e))
+            errors.append(f"操作 {op.get('action')} 失败：{e}")
 
     return jsonify({"ok": True, "done": done, "errors": errors})
 
+# -------------------- 文件访问 --------------------
 @bp.get("/file")
 def serve_file():
     path = request.args.get("path")
