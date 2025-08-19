@@ -186,7 +186,10 @@
 
     const selected=exts?exts.split(","):[];
     renderRows(j, selected);
-    $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项 · 接口 ${res.u}`;
+    const total=Number(j.total||0);
+    const pages=total?Math.ceil(total/pageSize):0;
+    $("#count").textContent=total?`${total} 个文件，共 ${pages} 页`:"未扫描";
+    $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项`;
   }
 
   function renderRows(payload, selectedExts){
@@ -197,13 +200,14 @@
       const ext=getExt(it);
       if(selectedExts.length && !selectedExts.includes(ext)) return;
       const full=getFullPath(it);
+      const dir=it.dir_path||it.dir||it.directory||it.path_dir||"";
       const sizeKB=humanKBFromAny(it.size_kb ?? it.sizeKB ?? it.size_bytes ?? it.size ?? it.bytes);
       const mtime=parseMTime(it);
       const tr=document.createElement("tr");
       tr.innerHTML=`
         <td><input type="checkbox" class="ck" data-path="${full}"></td>
         <td>${it.name||it.filename||""}</td>
-        <td>${full}</td>
+        <td>${dir}</td>
         <td>${ext}</td>
         <td>${it.category||""}</td>
         <td>${sizeKB}</td>
