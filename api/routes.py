@@ -60,6 +60,19 @@ def index_page():
         page_size_default=PAGE_SIZE_DEFAULT
     )
 
+# -------------------- 列举子目录 --------------------
+@bp.get("/ls")
+def list_dirs():
+    scan_dir = request.values.get("dir", DEFAULT_SCAN_DIR)
+    if not is_under_allowed_roots(scan_dir):
+        return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
+    try:
+        p = Path(scan_dir)
+        subs = [str(child) for child in p.iterdir() if child.is_dir()]
+        return jsonify({"ok": True, "subs": subs})
+    except Exception:
+        return jsonify({"ok": False, "error": "目录列举失败"}), 500
+
 # -------------------- 文件扫描 --------------------
 @bp.get("/scan")
 def scan():
