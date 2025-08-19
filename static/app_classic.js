@@ -185,8 +185,8 @@
     if(!j || !j.ok){ customConfirm("接口返回错误").then(()=>{}); return; }
 
     const selected=exts?exts.split(","):[];
-    renderRows(j, selected);
-    $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项 · 接口 ${res.u}`;
+    renderRows(result.data, selected);
+    $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项 · 接口 ${result.url}`;
   }
 
   function renderRows(payload, selectedExts){
@@ -197,13 +197,14 @@
       const ext=getExt(it);
       if(selectedExts.length && !selectedExts.includes(ext)) return;
       const full=getFullPath(it);
+      const dir=it.dir_path||it.dir||it.directory||it.path_dir||"";
       const sizeKB=humanKBFromAny(it.size_kb ?? it.sizeKB ?? it.size_bytes ?? it.size ?? it.bytes);
       const mtime=parseMTime(it);
       const tr=document.createElement("tr");
       tr.innerHTML=`
         <td><input type="checkbox" class="ck" data-path="${full}"></td>
         <td>${it.name||it.filename||""}</td>
-        <td>${full}</td>
+        <td>${dir}</td>
         <td>${ext}</td>
         <td>${it.category||""}</td>
         <td>${sizeKB}</td>

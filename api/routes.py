@@ -60,7 +60,6 @@ def index_page():
         page_size_default=PAGE_SIZE_DEFAULT
     )
 
-# -------------------- 文件扫描 --------------------
 @bp.get("/scan")
 def scan():
     scan_dir = request.values.get("dir", DEFAULT_SCAN_DIR)
