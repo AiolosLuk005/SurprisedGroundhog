@@ -1,4 +1,4 @@
-// Classic UI fix 20250818d: batch ops + confirms + preview + /full/* paths
+// Classic UI fix 20250820a: batch ops + confirms + preview + pagination + login/settings
 (function(){
   const TYPES={
     TEXT:["docx","doc","txt","md","rtf"],
@@ -86,9 +86,12 @@
     applyOps:["/full/apply_ops"],
     ls:["/ls"] // 会被统一入口重写到 /full/ls
   };
+
+  // ---- paging state ----
   let lastQuery=null;
   let currentPage=1;
   let totalPages=1;
+
   async function firstOK(urls,opts){
     let lastErr=null;
     for(const u of urls){
@@ -171,18 +174,36 @@
     const {dir,recur,pageSize,exts,cat,q}=lastQuery;
     const params=`dir=${qs(dir)}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
+
     toggleLoading(true, "正在扫描文件…");
     const res=await firstOK(candidates);
     toggleLoading(false);
-    if(!res.ok){ customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{}); return; }
+
+    if(!res.ok){
+      customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{});
+      return;
+    }
+
     let j=null;
-    try{ j=await res.r.json(); }catch(e){ customConfirm("响应解析失败").then(()=>{}); return; }
-    if(!j || !j.ok){ customConfirm("接口返回错误").then(()=>{}); return; }
+    try{
+      j=await res.r.json();
+    }catch(e){
+      customConfirm("响应解析失败").then(()=>{});
+      return;
+    }
+
+    if(!j || !j.ok){
+      customConfirm("接口返回错误").then(()=>{});
+      return;
+    }
+
     const selected=exts?exts.split(","):[];
     renderRows(j, selected);
+
+    // 页码与统计信息
     currentPage=page;
     const total=j.total||0;
-    totalPages=Math.max(1, Math.ceil(total/pageSize));
+    totalPages=Math.max(1, Math.ceil(total/(pageSize||1)));
     $("#count").textContent=`扫描结果：共 ${total} 项，共 ${totalPages} 页`;
     $("#pageinfo").textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${($$("#tbl tbody tr").length)} 项`;
     $("#prev").disabled=currentPage<=1;
@@ -190,7 +211,11 @@
   }
 
   async function onScan(){
-    const dir=($("#dir")?.value||"").trim(); if(!dir){ customConfirm("请选择扫描目录").then(()=>{}); return; }
+    const dir=($("#dir")?.value||"").trim();
+    if(!dir){
+      customConfirm("请选择扫描目录").then(()=>{});
+      return;
+    }
     lastQuery={
       dir,
       recur:$("#recur")?.checked?1:0,
@@ -347,63 +372,66 @@
 
   // ---- bind ----
   document.addEventListener("DOMContentLoaded", () => {
-  fillTypes();
-  $("#category")?.addEventListener("change", fillTypes);
-  $("#pickDir")?.addEventListener("click", showDirModal);
-  $("#scanBtn")?.addEventListener("click", onScan);
-  $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
-  $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
+    fillTypes();
+    $("#category")?.addEventListener("change", fillTypes);
+    $("#pickDir")?.addEventListener("click", showDirModal);
+    $("#scanBtn")?.addEventListener("click", onScan);
+    $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
+    $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
 
-  // 批量操作
-  $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
-  $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
-  $("#applyDeleteBtn")?.addEventListener("click", () => onApplyOps('delete'));
+    // 批量操作
+    $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
+    $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
+    $("#applyDeleteBtn")?.addEventListener("click", () => onApplyOps('delete'));
 
-  // 关键词
-  $("#genKwBtn")?.addEventListener("click", onGenKw);
-  $("#clearKwBtn")?.addEventListener("click", onClearKw);
+    // 关键词
+    $("#genKwBtn")?.addEventListener("click", onGenKw);
+    $("#clearKwBtn")?.addEventListener("click", onClearKw);
 
-  // 预览（委托）
-  $('#tbl tbody')?.addEventListener('click', (e) => {
+    // 预览（委托）
+    $('#tbl tbody')?.addEventListener('click', (e) => {
       if (e.target.classList.contains('pv')) onPreview(e);
-  });
+    });
 
-  const topbar = document.querySelector('.topbar');
-  const settingsBtn = document.createElement('button');
-  settingsBtn.textContent = '⚙️ 设置';
-  settingsBtn.className = 'btn btn-sm';
-  settingsBtn.style.marginLeft = '12px';
-  settingsBtn.onclick = () => {
+    // ---- settings / login UI ----
+    const topbar = document.querySelector('.topbar');
+
+    const settingsBtn = document.createElement('button');
+    settingsBtn.textContent = '⚙️ 设置';
+    settingsBtn.className = 'btn btn-sm';
+    settingsBtn.style.marginLeft = '12px';
+    settingsBtn.onclick = () => {
       document.getElementById('settingsModal').style.display = 'flex';
-  };
-  topbar?.appendChild(settingsBtn);
+    };
+    topbar?.appendChild(settingsBtn);
 
-  const user=document.body.dataset.user;
-  if(user){
+    const user=document.body.dataset.user;
+    if(user){
       const userSpan=document.createElement('span');
       userSpan.textContent=`👤 ${user}`;
       userSpan.style.marginLeft='12px';
       topbar?.appendChild(userSpan);
+
       const logoutBtn=document.createElement('button');
       logoutBtn.textContent='退出';
       logoutBtn.className='btn btn-sm';
       logoutBtn.style.marginLeft='8px';
       logoutBtn.onclick=async()=>{ await fetch('/full/logout'); location.reload(); };
       topbar?.appendChild(logoutBtn);
-  }else{
+    }else{
       const loginBtn=document.createElement('button');
       loginBtn.textContent='🔐 登录';
       loginBtn.className='btn btn-sm';
       loginBtn.style.marginLeft='12px';
       loginBtn.onclick=()=>{ document.getElementById('loginModal').style.display='flex'; };
       topbar?.appendChild(loginBtn);
-  }
+    }
 
-  document.getElementById('settingsClose')?.addEventListener('click', () => {
+    document.getElementById('settingsClose')?.addEventListener('click', () => {
       document.getElementById('settingsModal').style.display = 'none';
-  });
+    });
 
-  document.getElementById('loginConfirm')?.addEventListener('click', async () => {
+    document.getElementById('loginConfirm')?.addEventListener('click', async () => {
       const username = document.getElementById('loginUser').value.trim();
       const password = document.getElementById('loginPass').value.trim();
       const res = await fetch('/full/login', {
@@ -419,10 +447,10 @@
       } else {
         alert('登录失败：' + (j.error || '未知错误'));
       }
-  });
+    });
 
-  document.getElementById('loginCancel')?.addEventListener('click', () => {
+    document.getElementById('loginCancel')?.addEventListener('click', () => {
       document.getElementById('loginModal').style.display = 'none';
-  });
+    });
   });
 })();
