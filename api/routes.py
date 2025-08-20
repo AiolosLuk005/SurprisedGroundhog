@@ -56,10 +56,25 @@ def index_page():
     return render_template(
         "full.html",
         allowed_roots=ALLOWED_ROOTS,
-        default_dir=DEFAULT_SCAN_DIR,
+        default_dir="",
         enable_hash_default=ENABLE_HASH_DEFAULT,
-        page_size_default=PAGE_SIZE_DEFAULT
+        page_size_default=PAGE_SIZE_DEFAULT,
+        current_user=session.get("user")
     )
+
+@bp.get("/ls")
+def list_dirs():
+    base = request.args.get("dir")
+    if base:
+        if not is_under_allowed_roots(base):
+            return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
+        try:
+            subs = [str(p) for p in Path(base).iterdir() if p.is_dir()]
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 400
+    else:
+        subs = ALLOWED_ROOTS
+    return jsonify({"ok": True, "subs": subs})
 
 @bp.get("/scan")
 def scan():

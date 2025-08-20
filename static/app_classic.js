@@ -86,6 +86,9 @@
     applyOps:["/full/apply_ops"],
     ls:["/ls"] // 会被统一入口重写到 /full/ls
   };
+  let lastQuery=null;
+  let currentPage=1;
+  let totalPages=1;
   async function firstOK(urls,opts){
     let lastErr=null;
     for(const u of urls){
@@ -163,30 +166,40 @@
   }
 
   // ---- core actions ----
-  async function onScan(){
-    const dir=($("#dir")?.value||"").trim(); if(!dir){ customConfirm("请选择扫描目录").then(()=>{}); return; }
-    const recur=$("#recur")?.checked?1:0;
-    const pageSize=Number($("#page_size")?.value||500)||500;
-    const exts=Array.from($("#types")?.selectedOptions||[]).map(o=>o.value.toLowerCase()).join(",");
-    const cat=$("#category")?.value||"";
-    const q=$("#q")?.value||"";
-
-    const params=`dir=${qs(dir)}&recursive=${recur}&page=1&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
+  async function loadPage(page){
+    if(!lastQuery) return;
+    const {dir,recur,pageSize,exts,cat,q}=lastQuery;
+    const params=`dir=${qs(dir)}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
-
     toggleLoading(true, "正在扫描文件…");
     const res=await firstOK(candidates);
-    if(!res.ok){ toggleLoading(false); customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{}); return; }
-
-    let j=null;
-    try{ j=await res.r.json(); }catch(e){ toggleLoading(false); customConfirm("响应解析失败").then(()=>{}); return; }
     toggleLoading(false);
-
+    if(!res.ok){ customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{}); return; }
+    let j=null;
+    try{ j=await res.r.json(); }catch(e){ customConfirm("响应解析失败").then(()=>{}); return; }
     if(!j || !j.ok){ customConfirm("接口返回错误").then(()=>{}); return; }
-
     const selected=exts?exts.split(","):[];
-    renderRows(result.data, selected);
-    $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项 · 接口 ${result.url}`;
+    renderRows(j, selected);
+    currentPage=page;
+    const total=j.total||0;
+    totalPages=Math.max(1, Math.ceil(total/pageSize));
+    $("#count").textContent=`扫描结果：共 ${total} 项，共 ${totalPages} 页`;
+    $("#pageinfo").textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${($$("#tbl tbody tr").length)} 项`;
+    $("#prev").disabled=currentPage<=1;
+    $("#next").disabled=currentPage>=totalPages;
+  }
+
+  async function onScan(){
+    const dir=($("#dir")?.value||"").trim(); if(!dir){ customConfirm("请选择扫描目录").then(()=>{}); return; }
+    lastQuery={
+      dir,
+      recur:$("#recur")?.checked?1:0,
+      pageSize:Number($("#page_size")?.value||500)||500,
+      exts:Array.from($("#types")?.selectedOptions||[]).map(o=>o.value.toLowerCase()).join(","),
+      cat:$("#category")?.value||"",
+      q:$("#q")?.value||""
+    };
+    await loadPage(1);
   }
 
   function renderRows(payload, selectedExts){
@@ -338,6 +351,8 @@
   $("#category")?.addEventListener("change", fillTypes);
   $("#pickDir")?.addEventListener("click", showDirModal);
   $("#scanBtn")?.addEventListener("click", onScan);
+  $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
+  $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
 
   // 批量操作
   $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
@@ -353,50 +368,61 @@
       if (e.target.classList.contains('pv')) onPreview(e);
   });
 
-  // ✅ 新增登录 + 设置弹窗控制逻辑（添加在末尾 ↓↓↓）
-  const topbar = document.querySelector(".topbar");
-
-  const settingsBtn = document.createElement("button");
-  settingsBtn.textContent = "⚙️ 设置";
-  settingsBtn.className = "btn btn-sm";
-  settingsBtn.style.marginLeft = "12px";
+  const topbar = document.querySelector('.topbar');
+  const settingsBtn = document.createElement('button');
+  settingsBtn.textContent = '⚙️ 设置';
+  settingsBtn.className = 'btn btn-sm';
+  settingsBtn.style.marginLeft = '12px';
   settingsBtn.onclick = () => {
-      document.getElementById("settingsModal").style.display = "flex";
+      document.getElementById('settingsModal').style.display = 'flex';
   };
   topbar?.appendChild(settingsBtn);
 
-  const loginBtn = document.createElement("button");
-  loginBtn.textContent = "🔐 登录";
-  loginBtn.className = "btn btn-sm";
-  loginBtn.onclick = () => {
-      document.getElementById("loginModal").style.display = "flex";
-  };
-  topbar?.appendChild(loginBtn);
+  const user=document.body.dataset.user;
+  if(user){
+      const userSpan=document.createElement('span');
+      userSpan.textContent=`👤 ${user}`;
+      userSpan.style.marginLeft='12px';
+      topbar?.appendChild(userSpan);
+      const logoutBtn=document.createElement('button');
+      logoutBtn.textContent='退出';
+      logoutBtn.className='btn btn-sm';
+      logoutBtn.style.marginLeft='8px';
+      logoutBtn.onclick=async()=>{ await fetch('/full/logout'); location.reload(); };
+      topbar?.appendChild(logoutBtn);
+  }else{
+      const loginBtn=document.createElement('button');
+      loginBtn.textContent='🔐 登录';
+      loginBtn.className='btn btn-sm';
+      loginBtn.style.marginLeft='12px';
+      loginBtn.onclick=()=>{ document.getElementById('loginModal').style.display='flex'; };
+      topbar?.appendChild(loginBtn);
+  }
 
-  document.getElementById("settingsClose")?.addEventListener("click", () => {
-      document.getElementById("settingsModal").style.display = "none";
+  document.getElementById('settingsClose')?.addEventListener('click', () => {
+      document.getElementById('settingsModal').style.display = 'none';
   });
 
-  document.getElementById("loginConfirm")?.addEventListener("click", async () => {
-      const username = document.getElementById("loginUser").value.trim();
-      const password = document.getElementById("loginPass").value.trim();
-      const res = await fetch("/full/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
+  document.getElementById('loginConfirm')?.addEventListener('click', async () => {
+      const username = document.getElementById('loginUser').value.trim();
+      const password = document.getElementById('loginPass').value.trim();
+      const res = await fetch('/full/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
       });
       const j = await res.json();
       if (j.ok) {
-      alert("登录成功");
-      document.getElementById("loginModal").style.display = "none";
-      location.reload();
+        alert('登录成功');
+        document.getElementById('loginModal').style.display = 'none';
+        location.reload();
       } else {
-      alert("登录失败：" + (j.error || "未知错误"));
+        alert('登录失败：' + (j.error || '未知错误'));
       }
   });
 
-  document.getElementById("loginCancel")?.addEventListener("click", () => {
-      document.getElementById("loginModal").style.display = "none";
+  document.getElementById('loginCancel')?.addEventListener('click', () => {
+      document.getElementById('loginModal').style.display = 'none';
   });
   });
 })();

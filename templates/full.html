@@ -65,7 +65,7 @@
   .preview-content img, .preview-content video { max-width: 100%; height: auto; }
   </style>
 </head>
-<body>
+<body data-user="{{ current_user or '' }}">
   <div class="topbar">
     <h2 class="brand">Surprised Groundhog · V1.01</h2>
     <img class="logo" src="/static/logo.png" alt="logo">
@@ -215,59 +215,5 @@
     </div>
   </div>
 </div>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  // 添加 设置按钮
-  const topbar = document.querySelector(".topbar");
-  const settingsBtn = document.createElement("button");
-  settingsBtn.textContent = "⚙️ 设置";
-  settingsBtn.className = "btn btn-sm";
-  settingsBtn.style.marginLeft = "12px";
-  settingsBtn.onclick = () => {
-    document.getElementById("settingsModal").style.display = "flex";
-  };
-  topbar?.appendChild(settingsBtn);
-
-  // 设置关闭按钮
-  document.getElementById("settingsClose")?.addEventListener("click", () => {
-    document.getElementById("settingsModal").style.display = "none";
-  });
-
-  // 登录按钮（可选添加）
-  const loginBtn = document.createElement("button");
-  loginBtn.textContent = "🔐 登录";
-  loginBtn.className = "btn btn-sm";
-  loginBtn.onclick = () => {
-    document.getElementById("loginModal").style.display = "flex";
-  };
-  topbar?.appendChild(loginBtn);
-
-  // 登录确认事件
-  document.getElementById("loginConfirm")?.addEventListener("click", async () => {
-    const username = document.getElementById("loginUser").value.trim();
-    const password = document.getElementById("loginPass").value.trim();
-    const res = await fetch("/full/login", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({username, password})
-    });
-    const j = await res.json();
-    if (j.ok) {
-      alert("登录成功");
-      document.getElementById("loginModal").style.display = "none";
-      location.reload();
-    } else {
-      alert("登录失败：" + (j.error || "未知错误"));
-    }
-  });
-
-  // 登录取消
-  document.getElementById("loginCancel")?.addEventListener("click", () => {
-    document.getElementById("loginModal").style.display = "none";
-  });
-});
-</script>
-
 </body>
 </html>
