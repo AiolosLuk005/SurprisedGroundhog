@@ -87,11 +87,6 @@
     ls:["/ls"] // 会被统一入口重写到 /full/ls
   };
 
-  // ---- paging state ----
-  let lastQuery=null;
-  let currentPage=1;
-  let totalPages=1;
-
   async function firstOK(urls,opts){
     let lastErr=null;
     for(const u of urls){
@@ -172,39 +167,10 @@
   async function loadPage(page){
     if(!lastQuery) return;
     const {dir,recur,pageSize,exts,cat,q,withHash}=lastQuery;
-    const params=`dir=${qs(dir)}&hash=${withHash||0}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
-
     toggleLoading(true, "正在扫描文件…");
     const res=await firstOK(candidates);
     toggleLoading(false);
-
-    if(!res.ok){
-      customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{});
-      return;
-    }
-
-    let j=null;
-    try{
-      j=await res.r.json();
-    }catch(e){
-      customConfirm("响应解析失败").then(()=>{});
-      return;
-    }
-
-    if(!j || !j.ok){
-      customConfirm("接口返回错误").then(()=>{});
-      return;
-    }
-
-    const selected=exts?exts.split(","):[];
-    renderRows(j, selected);
-    applyKwFilter(); // 若有关键词过滤输入，则筛选
-
-    // 页码与统计信息
-    currentPage=page;
-    const total=j.total||0;
-    totalPages=Math.max(1, Math.ceil(total/(pageSize||1)));
     $("#count").textContent=`扫描结果：共 ${total} 项，共 ${totalPages} 页`;
     $("#pageinfo").textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${($$("#tbl tbody tr").length)} 项`;
     $("#prev").disabled=currentPage<=1;
@@ -212,11 +178,6 @@
   }
 
   async function onScan(){
-    const dir=($("#dir")?.value||"").trim();
-    if(!dir){
-      customConfirm("请选择扫描目录").then(()=>{});
-      return;
-    }
     lastQuery={
       dir,
       recur:$("#recur")?.checked?1:0,
@@ -241,6 +202,7 @@
       const sizeKB=humanKBFromAny(it.size_kb ?? it.sizeKB ?? it.size_bytes ?? it.size ?? it.bytes);
       const mtime=parseMTime(it);
       const tr=document.createElement("tr");
+      const previewDisabled = (it.category==='VIDEO' && !features.enable_video_preview) || (it.category==='AUDIO' && !features.enable_audio_preview);
       tr.innerHTML=`
         <td><input type="checkbox" class="ck" data-path="${full}"></td>
         <td>${it.name||it.filename||""}</td>
@@ -250,11 +212,117 @@
         <td>${sizeKB}</td>
         <td>${mtime}</td>
         <td class="kw">${it.keywords||""}</td>
-        <td><input class="mv" placeholder="目标目录"></td>
-        <td><input class="rn" placeholder="新文件名"></td>
-        <td><button class="btn btn-sm pv" data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
-      tbody.appendChild(tr);
+        <td><input class="mv" placeholder="目标目录" disabled></td>
+        <td><input class="rn" placeholder="新文件名" disabled></td>
+        <td><button class="btn btn-sm pv" ${previewDisabled?'disabled':''} data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
+    tbody.appendChild(tr);
     });
+  }
+
+  function applyFeatureToggles(s){
+    features=s.features||{};
+    const map={TEXT:'enable_text',DATA:'enable_data',SLIDES:'enable_slides',PDF:'enable_pdf',ARCHIVE:'enable_archive',IMAGE:'enable_image',VIDEO:'enable_video',AUDIO:'enable_audio'};
+    Object.entries(map).forEach(([cat,key])=>{
+      const opt=$(`#category option[value="${cat}"]`); if(opt){ opt.disabled=!features[key]; }
+    });
+    if(!features.enable_ai_keywords){ $('#kw_len').disabled=true; $('#genKwBtn').disabled=true; $('#clearKwBtn').disabled=true; }
+    if(!features.enable_move){ $('#applyMoveBtn').disabled=true; }
+    if(!features.enable_rename){ $('#applyRenameBtn').disabled=true; }
+    if(!features.enable_delete){ $('#applyDeleteBtn').disabled=true; }
+  }
+
+  function updateAIFields(){
+    const p=$('#aiProvider')?.value;
+    if(p==='ollama'){
+      $('#aiApiKey').style.display='none';
+    }else{
+      $('#aiApiKey').style.display='block';
+    }
+  }
+
+  function applyKwFilter(){
+    const kw = $("#kwFilter")?.value.trim();
+    const terms = kw ? kw.split(/\s+/).filter(Boolean) : [];
+    const rows = $$("#tbl tbody tr");
+    rows.forEach(tr=>{
+      if(!terms.length){ tr.style.display=""; return; }
+      const text = tr.querySelector('.kw').textContent;
+      const ok = terms.every(t=>text.includes(t));
+      tr.style.display = ok ? '' : 'none';
+    });
+    const visible = rows.filter(tr=>tr.style.display!=='none').length;
+    $("#pageinfo")?.textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`;
+  }
+
+  async function openSettings(){
+    const res = await fetch('/full/settings');
+    const s = await res.json();
+    if(s.theme){ $$('input[name="theme"]').forEach(r=>r.checked=(r.value===s.theme)); }
+    $('#aiProvider').value = s.ai?.provider || 'ollama';
+    $('#aiUrl').value = s.ai?.url || '';
+    $('#aiApiKey').value = s.ai?.api_key || '';
+    $('#aiModel').value = s.ai?.model || '';
+    updateAIFields();
+    const f = s.features || {};
+    $('#feat_text').checked = !!f.enable_text;
+    $('#feat_data').checked = !!f.enable_data;
+    $('#feat_slides').checked = !!f.enable_slides;
+    $('#feat_pdf').checked = !!f.enable_pdf;
+    $('#feat_archive').checked = !!f.enable_archive;
+    $('#feat_image').checked = !!f.enable_image;
+    $('#feat_video').checked = !!f.enable_video;
+    $('#feat_audio').checked = !!f.enable_audio;
+    $('#feat_ai_keywords').checked = !!f.enable_ai_keywords;
+    $('#feat_move').checked = !!f.enable_move;
+    $('#feat_rename').checked = !!f.enable_rename;
+    $('#feat_delete').checked = !!f.enable_delete;
+    $('#feat_image_caption').checked = !!f.enable_image_caption;
+    $('#feat_video_preview').checked = !!f.enable_video_preview;
+    $('#feat_audio_preview').checked = !!f.enable_audio_preview;
+    $('#settingsModal').style.display='flex';
+  }
+
+  async function saveSettings(){
+    const payload={
+      theme: ($$('input[name="theme"]:checked')[0]?.value)||'system',
+      ai:{
+        provider: $('#aiProvider').value,
+        url: $('#aiUrl').value.trim(),
+        api_key: $('#aiApiKey').value.trim(),
+        model: $('#aiModel').value
+      },
+      features:{
+        enable_text: $('#feat_text').checked,
+        enable_data: $('#feat_data').checked,
+        enable_slides: $('#feat_slides').checked,
+        enable_pdf: $('#feat_pdf').checked,
+        enable_archive: $('#feat_archive').checked,
+        enable_image: $('#feat_image').checked,
+        enable_video: $('#feat_video').checked,
+        enable_audio: $('#feat_audio').checked,
+        enable_ai_keywords: $('#feat_ai_keywords').checked,
+        enable_move: $('#feat_move').checked,
+        enable_rename: $('#feat_rename').checked,
+        enable_delete: $('#feat_delete').checked,
+        enable_image_caption: $('#feat_image_caption').checked,
+        enable_video_preview: $('#feat_video_preview').checked,
+        enable_audio_preview: $('#feat_audio_preview').checked
+      }
+    };
+    await fetch('/full/settings', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    alert('已保存');
+    location.reload();
+  }
+
+  function onExport(){
+    if(!lastQuery){ customConfirm('请先扫描').then(()=>{}); return; }
+    const {dir,withHash,recur,cat,exts}=lastQuery;
+    const url=`${PATHS.exportCSV[0]}?dir=${qs(dir)}&hash=${withHash}&recursive=${recur}&category=${qs(cat)}&types=${qs(exts)}`;
+    window.open(url,'_blank');
   }
 
   // 关键词过滤（表内实时筛选）
@@ -375,15 +443,11 @@
       confirmMessage = `确认移动 ${selectedRows.length} 个文件吗？`;
       selectedRows.forEach(cb => {
         const row = cb.closest('tr');
-        const dst = row.querySelector('.mv')?.value.trim();
-        if (dst) ops.push({ action: 'move', src: cb.dataset.path, dst });
       });
     } else if (action === 'rename') {
       confirmMessage = `确认重命名 ${selectedRows.length} 个文件吗？`;
       selectedRows.forEach(cb => {
         const row = cb.closest('tr');
-        const newName = row.querySelector('.rn')?.value.trim();
-        if (newName) ops.push({ action: 'rename', src: cb.dataset.path, new_name: newName });
       });
     }
 
@@ -478,71 +542,6 @@
   }
 
   // ---- bind ----
-  document.addEventListener("DOMContentLoaded", () => {
-    fillTypes();
-    $("#category")?.addEventListener("change", fillTypes);
-    $("#pickDir")?.addEventListener("click", showDirModal);
-    $("#scanBtn")?.addEventListener("click", onScan);
-    $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
-    $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
-
-    // 导出 & 关键词过滤控件（如存在）
-    $("#exportBtn")?.addEventListener("click", onExport);
-    $("#kwFilterBtn")?.addEventListener("click", applyKwFilter);
-    $("#kwFilter")?.addEventListener("input", (e)=>{ if(!e.target.value) applyKwFilter(); });
-
-    // 批量操作
-    $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
-    $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
-    $("#applyDeleteBtn")?.addEventListener("click", () => onApplyOps('delete'));
-
-    // 关键词
-    $("#genKwBtn")?.addEventListener("click", onGenKw);
-    $("#clearKwBtn")?.addEventListener("click", onClearKw);
-
-    // 预览（委托）
-    $('#tbl tbody')?.addEventListener('click', (e) => {
-      if (e.target.classList.contains('pv')) onPreview(e);
-    });
-
-    // ---- settings / login UI ----
-    const topbar = document.querySelector('.topbar');
-
-    const settingsBtn = document.createElement('button');
-    settingsBtn.textContent = '⚙️ 设置';
-    settingsBtn.className = 'btn btn-sm';
-    settingsBtn.style.marginLeft = '12px';
-    settingsBtn.onclick = openSettings;
-    topbar?.appendChild(settingsBtn);
-
-    const user=document.body.dataset.user;
-    if(user){
-      const userSpan=document.createElement('span');
-      userSpan.textContent=`👤 ${user}`;
-      userSpan.style.marginLeft='12px';
-      topbar?.appendChild(userSpan);
-
-      const logoutBtn=document.createElement('button');
-      logoutBtn.textContent='退出';
-      logoutBtn.className='btn btn-sm';
-      logoutBtn.style.marginLeft='8px';
-      logoutBtn.onclick=async()=>{ await fetch('/full/logout'); location.reload(); };
-      topbar?.appendChild(logoutBtn);
-    }else{
-      const loginBtn=document.createElement('button');
-      loginBtn.textContent='🔐 登录';
-      loginBtn.className='btn btn-sm';
-      loginBtn.style.marginLeft='12px';
-      loginBtn.onclick=()=>{ document.getElementById('loginModal').style.display='flex'; };
-      topbar?.appendChild(loginBtn);
-    }
-
-    document.getElementById('settingsClose')?.addEventListener('click', () => {
-      document.getElementById('settingsModal').style.display = 'none';
-    });
-    document.getElementById('settingsSave')?.addEventListener('click', saveSettings);
-
-    document.getElementById('loginConfirm')?.addEventListener('click', async () => {
       const username = document.getElementById('loginUser').value.trim();
       const password = document.getElementById('loginPass').value.trim();
       const res = await fetch('/full/login', {
@@ -560,8 +559,5 @@
       }
     });
 
-    document.getElementById('loginCancel')?.addEventListener('click', () => {
-      document.getElementById('loginModal').style.display = 'none';
-    });
   });
 })();

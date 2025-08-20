@@ -69,12 +69,12 @@
   .small-muted{ color:#666; font-size:12px; }
   </style>
 </head>
-
-<!-- 加上 data-user 便于 JS 显示登录用户 -->
-<body data-user="{{ session.get('user', '') }}">
   <div class="topbar">
-    <h2 class="brand">Surprised Groundhog · V1.01</h2>
-    <img class="logo" src="/static/logo.png" alt="logo">
+    <div class="topbar-left">
+      <img class="logo" src="/static/logo.png" alt="logo">
+      <h2 class="brand">Surprised Groundhog · V1.01</h2>
+    </div>
+    <div id="userTools"></div>
   </div>
 
   <div class="row">
@@ -106,8 +106,10 @@
     <span id="count" class="muted right">未扫描</span>
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="mainToolbar">
     <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
+    <input id="kwFilter" type="text" placeholder="按关键词筛选" style="min-width:160px;">
+    <button class="btn" id="kwFilterBtn">筛选</button>
     <button class="btn" id="exportBtn">导出 CSV</button>
     <button class="btn" id="importBtn">导入 MySQL</button>
 
@@ -117,11 +119,22 @@
     <input id="kw_len" type="number" min="1" max="200" value="50" style="width:70px" title="关键词最大长度">
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="kwBlock">
+    <label>关键词长度：</label>
+    <input id="kw_len" type="number" value="50" min="1" max="200" style="width:80px;">
     <button class="btn" id="genKwBtn">提取关键词</button>
     <button class="btn" id="clearKwBtn">清除关键词</button>
+  </div>
+
+  <div class="toolbar" id="moveBlock">
     <button class="btn" id="applyMoveBtn">批量移动</button>
+  </div>
+
+  <div class="toolbar" id="renameBlock">
     <button class="btn" id="applyRenameBtn">批量重命名</button>
+  </div>
+
+  <div class="toolbar" id="deleteBlock">
     <button class="btn" id="applyDeleteBtn">批量删除</button>
   </div>
 
@@ -243,40 +256,5 @@
           <div class="small-muted">说明：本地 Ollama 不需要 API Key；远程 AI 需要。</div>
         </div>
 
-        <div style="margin-top: 12px;">
-          <div class="section-title">功能权限开关</div>
-          <div class="grid-2">
-            <label class="pill"><input type="checkbox" id="feat_text" checked> 文字类型</label>
-            <label class="pill"><input type="checkbox" id="feat_data" checked> 数据类型</label>
-            <label class="pill"><input type="checkbox" id="feat_slides" checked> 简报类型</label>
-            <label class="pill"><input type="checkbox" id="feat_pdf" checked> PDF 类型</label>
-            <label class="pill"><input type="checkbox" id="feat_archive" checked> 压缩类型</label>
-            <label class="pill"><input type="checkbox" id="feat_image" checked> 图片类型</label>
-            <label class="pill"><input type="checkbox" id="feat_video"> 视频类型</label>
-            <label class="pill"><input type="checkbox" id="feat_audio"> 音频类型</label>
-            <label class="pill"><input type="checkbox" id="feat_ai_keywords" checked> AI 关键词提取</label>
-            <label class="pill"><input type="checkbox" id="feat_move" checked> 移动</label>
-            <label class="pill"><input type="checkbox" id="feat_rename" checked> 重命名</label>
-            <label class="pill"><input type="checkbox" id="feat_delete" checked> 删除</label>
-            <label class="pill"><input type="checkbox" id="feat_image_caption"> 图像反向提示词</label>
-            <label class="pill"><input type="checkbox" id="feat_video_preview"> 视频预览</label>
-            <label class="pill"><input type="checkbox" id="feat_audio_preview"> 音频预览</label>
-          </div>
-        </div>
-      </div>
-      <div class="modal-foot" style="justify-content:flex-end;">
-        <button class="btn" id="settingsSave">保存设置</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 全局加载层 -->
-  <div id="loading" class="loader" aria-hidden="true">
-    <div class="spinner hourglass"></div>
-    <div class="loading-text">正在处理，请稍候…</div>
-  </div>
-
-  <!-- 带版本号避免缓存 -->
-  <script src="/static/app_classic.js?v=20250820b"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 allowed_roots = ["C:/", "D:/", "E:/", "F:/", "G:/"]
 port = 5005
 enable_hash = false
-page_size_default = 200
+page_size_default = 50
 ollama = { enable = true, model = "llama3.1:latest", timeout_sec = 30 }
 
 # 放在全局（不在 [mysql] 里）

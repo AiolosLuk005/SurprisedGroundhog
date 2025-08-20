@@ -1,8 +1,15 @@
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #eee}
+.topbar-left{display:flex;align-items:center;gap:8px}
+#userTools{display:flex;align-items:center;gap:8px}
 .brand{margin:0}
 .logo{height:32px}
 .row{display:flex;gap:10px;align-items:center;padding:10px 18px;flex-wrap:wrap}
 .toolbar{display:flex;gap:10px;align-items:center;padding:8px 18px;border-top:1px solid #f0f0f0;border-bottom:1px solid #f0f0f0}
+#mainToolbar{background:#e8f4ff}
+#kwBlock{background:#f3e8ff}
+#moveBlock{background:#e8fff3}
+#renameBlock{background:#fffbe8}
+#deleteBlock{background:#ffe8e8}
 .badge{background:#f5f5f5;border-radius:10px;padding:4px 8px}
 .muted{color:#666}
 .right{margin-left:auto}
