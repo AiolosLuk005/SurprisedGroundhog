@@ -230,8 +230,6 @@
       const ok=terms.every(t=>text.includes(t));
       tr.style.display=ok?'':'none';
     });
-    const visible=rows.filter(tr=>tr.style.display!=='none').length;
-    const el=$('#pageinfo'); if(el) el.textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`;
   }
 
   async function openSettings(){
@@ -406,36 +404,6 @@
     }else{ content='<p>该文件类型不支持预览。</p>'; }
     customPreview(path.split(/[\\/]/).pop(),content);
   }
-
-  document.addEventListener('DOMContentLoaded', async()=>{
-    let settings={};
-    try{ const res=await fetch('/full/settings',{credentials:'include'}); settings=await res.json(); applyFeatureToggles(settings); }
-    catch(e){ console.warn('读取设置失败',e); applyFeatureToggles({}); }
-
-    fillTypes();
-    $('#category')?.addEventListener('change', fillTypes);
-    $('#pickDir')?.addEventListener('click', showDirModal);
-    $('#scanBtn')?.addEventListener('click', onScan);
-    $('#prev')?.addEventListener('click',()=>loadPage(currentPage-1));
-    $('#next')?.addEventListener('click',()=>loadPage(currentPage+1));
-    $('#exportBtn')?.addEventListener('click', onExport);
-    $('#kwFilterBtn')?.addEventListener('click', applyKwFilter);
-    $('#kwFilter')?.addEventListener('keyup',e=>{if(e.key==='Enter') applyKwFilter();});
-    $('#genKwBtn')?.addEventListener('click', onGenKw);
-    $('#clearKwBtn')?.addEventListener('click', onClearKw);
-    $('#applyMoveBtn')?.addEventListener('click',()=>onApplyOps('move'));
-    $('#applyRenameBtn')?.addEventListener('click',()=>onApplyOps('rename'));
-    $('#applyDeleteBtn')?.addEventListener('click',()=>onApplyOps('delete'));
-    $('#tbl')?.addEventListener('click',e=>{ if(e.target.classList.contains('pv')) onPreview(e); });
-
-    const ut=$('#userTools');
-    if(ut){
-      if(settings.user){
-        ut.innerHTML=`<button class="btn btn-sm" id="settingsBtn">设置</button><button class="btn btn-sm" id="logoutBtn">退出(${settings.user})</button>`;
-        $('#logoutBtn').onclick=async()=>{ await fetch('/full/logout',{credentials:'include'}); location.reload(); };
-      }else{
-        ut.innerHTML=`<button class="btn btn-sm" id="settingsBtn">设置</button><button class="btn btn-sm" id="loginBtn">登录</button>`;
-        $('#loginBtn').onclick=()=>{ $('#loginModal').style.display='flex'; };
       }
       $('#settingsBtn').onclick=openSettings;
     }
