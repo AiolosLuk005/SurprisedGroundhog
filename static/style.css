@@ -18,6 +18,7 @@ th,td{border-bottom:1px solid #eee;padding:8px;text-align:left}
 .op-rename{background:#fffbe8}
 .op-delete{background:#ffe8e8}
 .btn-sm{padding:3px 6px;font-size:12px}
+.btn:disabled,input:disabled{opacity:.5;cursor:not-allowed}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none}
 .modal-content{width:720px;max-width:90vw;margin:10vh auto;background:#fff;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.1);padding:12px}
 .modal-head,.modal-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 4px}
