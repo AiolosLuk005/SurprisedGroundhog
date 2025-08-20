@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from urllib.parse import urlencode
-from flask import Flask, request, abort, redirect, jsonify
+from flask import Flask, request, abort, redirect, jsonify, session
 
 # 你的蓝图（保持现有路径）
 from api.ai import bp as ai_bp            # /api/ai/*
@@ -46,6 +46,11 @@ def create_app() -> Flask:
 
     # --------------------------- Access Control ---------------------------
     @app.before_request
+    def check_login_permission():
+        if request.path.startswith("/full/") and not request.path.endswith("/login"):
+            if "user" not in session:
+                if request.is_json or request.method == "POST":
+                    return jsonify({"ok": False, "error": "未登录"}), 401
     def _only_local_for_full():
         """
         只允许本机访问 /full/* ，防止同网段的人通过你的电脑操作文件。

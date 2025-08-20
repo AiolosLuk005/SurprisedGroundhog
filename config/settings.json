@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "admin_username": "admin",
+    "admin_password": "admin"
+  },
+  "permissions": {
+    "admin": 1
+  },
+  "theme": "system",
+  "ai": {
+    "provider": "ollama",
+    "api_key": ""
+  },
+  "features": {
+    "enable_text": true,
+    "enable_data": true,
+    "enable_image_caption": false,
+    "enable_video_preview": false,
+    "enable_audio_preview": false,
+    "enable_move": true,
+    "enable_rename": true,
+    "enable_delete": true,
+    "enable_ai_keywords": true
+  }
+}

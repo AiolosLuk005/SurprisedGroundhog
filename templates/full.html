@@ -189,5 +189,85 @@
 
   <!-- 带版本号避免缓存 -->
   <script src="/static/app_classic.js?v=20250818d"></script>
+
+<!-- 登录弹窗 -->
+<div id="loginModal" class="confirm-modal" style="display:none;">
+  <div class="confirm-modal-content">
+    <p><strong>管理员登录</strong></p>
+    <div style="margin-top: 10px;">
+      <input id="loginUser" placeholder="用户名" style="margin-bottom:8px;width: 80%;"><br>
+      <input id="loginPass" type="password" placeholder="密码" style="width: 80%;">
+    </div>
+    <div style="margin-top: 20px;">
+      <button class="btn" id="loginConfirm">登录</button>
+      <button class="btn" id="loginCancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div id="settingsModal" class="confirm-modal" style="display:none;">
+  <div class="confirm-modal-content">
+    <p><strong>系统设置（开发中）</strong></p>
+    <p>将来这里将提供界面主题、AI选择、功能开关等配置</p>
+    <div style="margin-top: 20px;">
+      <button class="btn" id="settingsClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // 添加 设置按钮
+  const topbar = document.querySelector(".topbar");
+  const settingsBtn = document.createElement("button");
+  settingsBtn.textContent = "⚙️ 设置";
+  settingsBtn.className = "btn btn-sm";
+  settingsBtn.style.marginLeft = "12px";
+  settingsBtn.onclick = () => {
+    document.getElementById("settingsModal").style.display = "flex";
+  };
+  topbar?.appendChild(settingsBtn);
+
+  // 设置关闭按钮
+  document.getElementById("settingsClose")?.addEventListener("click", () => {
+    document.getElementById("settingsModal").style.display = "none";
+  });
+
+  // 登录按钮（可选添加）
+  const loginBtn = document.createElement("button");
+  loginBtn.textContent = "🔐 登录";
+  loginBtn.className = "btn btn-sm";
+  loginBtn.onclick = () => {
+    document.getElementById("loginModal").style.display = "flex";
+  };
+  topbar?.appendChild(loginBtn);
+
+  // 登录确认事件
+  document.getElementById("loginConfirm")?.addEventListener("click", async () => {
+    const username = document.getElementById("loginUser").value.trim();
+    const password = document.getElementById("loginPass").value.trim();
+    const res = await fetch("/full/login", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({username, password})
+    });
+    const j = await res.json();
+    if (j.ok) {
+      alert("登录成功");
+      document.getElementById("loginModal").style.display = "none";
+      location.reload();
+    } else {
+      alert("登录失败：" + (j.error || "未知错误"));
+    }
+  });
+
+  // 登录取消
+  document.getElementById("loginCancel")?.addEventListener("click", () => {
+    document.getElementById("loginModal").style.display = "none";
+  });
+});
+</script>
+
 </body>
 </html>

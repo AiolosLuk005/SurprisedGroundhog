@@ -333,24 +333,70 @@
   }
 
   // ---- bind ----
-  document.addEventListener("DOMContentLoaded",()=>{
-    fillTypes();
-    $("#category")?.addEventListener("change", fillTypes);
-    $("#pickDir")?.addEventListener("click", showDirModal);
-    $("#scanBtn")?.addEventListener("click", onScan);
+  document.addEventListener("DOMContentLoaded", () => {
+  fillTypes();
+  $("#category")?.addEventListener("change", fillTypes);
+  $("#pickDir")?.addEventListener("click", showDirModal);
+  $("#scanBtn")?.addEventListener("click", onScan);
 
-    // 批量操作
-    $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
-    $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
-    $("#applyDeleteBtn")?.addEventListener("click", () => onApplyOps('delete'));
+  // 批量操作
+  $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
+  $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
+  $("#applyDeleteBtn")?.addEventListener("click", () => onApplyOps('delete'));
 
-    // 关键词
-    $("#genKwBtn")?.addEventListener("click", onGenKw);
-    $("#clearKwBtn")?.addEventListener("click", onClearKw);
+  // 关键词
+  $("#genKwBtn")?.addEventListener("click", onGenKw);
+  $("#clearKwBtn")?.addEventListener("click", onClearKw);
 
-    // 预览（委托）
-    $('#tbl tbody')?.addEventListener('click', (e) => {
+  // 预览（委托）
+  $('#tbl tbody')?.addEventListener('click', (e) => {
       if (e.target.classList.contains('pv')) onPreview(e);
-    });
+  });
+
+  // ✅ 新增登录 + 设置弹窗控制逻辑（添加在末尾 ↓↓↓）
+  const topbar = document.querySelector(".topbar");
+
+  const settingsBtn = document.createElement("button");
+  settingsBtn.textContent = "⚙️ 设置";
+  settingsBtn.className = "btn btn-sm";
+  settingsBtn.style.marginLeft = "12px";
+  settingsBtn.onclick = () => {
+      document.getElementById("settingsModal").style.display = "flex";
+  };
+  topbar?.appendChild(settingsBtn);
+
+  const loginBtn = document.createElement("button");
+  loginBtn.textContent = "🔐 登录";
+  loginBtn.className = "btn btn-sm";
+  loginBtn.onclick = () => {
+      document.getElementById("loginModal").style.display = "flex";
+  };
+  topbar?.appendChild(loginBtn);
+
+  document.getElementById("settingsClose")?.addEventListener("click", () => {
+      document.getElementById("settingsModal").style.display = "none";
+  });
+
+  document.getElementById("loginConfirm")?.addEventListener("click", async () => {
+      const username = document.getElementById("loginUser").value.trim();
+      const password = document.getElementById("loginPass").value.trim();
+      const res = await fetch("/full/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+      });
+      const j = await res.json();
+      if (j.ok) {
+      alert("登录成功");
+      document.getElementById("loginModal").style.display = "none";
+      location.reload();
+      } else {
+      alert("登录失败：" + (j.error || "未知错误"));
+      }
+  });
+
+  document.getElementById("loginCancel")?.addEventListener("click", () => {
+      document.getElementById("loginModal").style.display = "none";
+  });
   });
 })();

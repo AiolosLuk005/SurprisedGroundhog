@@ -15,4 +15,5 @@ def save_settings(data):
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
+# ✅ 确保这一行存在
 SETTINGS = load_settings()

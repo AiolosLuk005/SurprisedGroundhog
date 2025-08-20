@@ -5,13 +5,14 @@ from pathlib import Path
 import os, io, csv, shutil
 from PIL import Image
 from send2trash import send2trash
-
 from core.config import ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT, MYSQL_ENABLED, TRASH_DIR
 from core.utils.iterfiles import is_under_allowed_roots, iter_files  # 依然复用你的核心扫描逻辑
 from core.extractors import extract_text_for_keywords
 from core.ollama import call_ollama_keywords
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
+from flask import session
+from core.settings import SETTINGS
 
 bp = Blueprint("full_api", __name__)
 
@@ -294,3 +295,19 @@ def thumb():
             return send_file(buf, mimetype="image/jpeg")
     except Exception:
         abort(404)
+
+@bp.post("/login")
+def login():
+    data = request.get_json(silent=True) or {}
+    user = data.get("username")
+    pwd = data.get("password")
+    if user == SETTINGS["auth"]["admin_username"] and pwd == SETTINGS["auth"]["admin_password"]:
+        session["user"] = user
+        session["level"] = SETTINGS["permissions"].get(user, 1)
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "用户名或密码错误"}), 401
+
+@bp.get("/logout")
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
