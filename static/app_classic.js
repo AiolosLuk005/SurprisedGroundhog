@@ -233,10 +233,42 @@
 
   function updateAIFields(){
     const p=$('#aiProvider')?.value;
-    if(p==='ollama'){
-      $('#aiApiKey').style.display='none';
+    const url=$('#aiUrl');
+    const key=$('#aiApiKey');
+    const urlDiv=url?.parentElement;
+    const keyDiv=key?.parentElement;
+    const modelSel=$('#aiModel');
+
+    if(keyDiv) keyDiv.style.display=(p==='ollama')?'none':'block';
+    if(urlDiv) urlDiv.style.display='block';
+
+    if(p==='deepseek'){
+      if(url) url.required=true;
+      if(key) key.required=true;
+    }else if(p==='chatgpt'){
+      if(url) url.required=false;
+      if(key) key.required=true;
     }else{
-      $('#aiApiKey').style.display='block';
+      if(url) url.required=false;
+      if(key) key.required=false;
+    }
+
+    if(modelSel){
+      const prev=modelSel.value;
+      modelSel.innerHTML='';
+      let models=[];
+      if(p==='ollama'){
+        models=['qwen2.5:latest','llama2','mistral'];
+      }else if(p==='chatgpt'){
+        models=['gpt-3.5-turbo','gpt-4','gpt-4o'];
+      }else if(p==='deepseek'){
+        models=['deepseek-chat','deepseek-coder'];
+      }
+      models.forEach(m=>{
+        const o=document.createElement('option');
+        o.value=m; o.textContent=m; modelSel.appendChild(o);
+      });
+      if(prev) modelSel.value=prev;
     }
   }
 
@@ -261,8 +293,8 @@
     $('#aiProvider').value = s.ai?.provider || 'ollama';
     $('#aiUrl').value = s.ai?.url || '';
     $('#aiApiKey').value = s.ai?.api_key || '';
-    $('#aiModel').value = s.ai?.model || '';
     updateAIFields();
+    $('#aiModel').value = s.ai?.model || '';
     const f = s.features || {};
     $('#feat_text').checked = !!f.enable_text;
     $('#feat_data').checked = !!f.enable_data;
@@ -351,7 +383,10 @@
       const s = await res.json();
       if(s.theme){ $$('input[name="theme"]').forEach(r=>r.checked=(r.value===s.theme)); }
       if($('#aiProvider')) $('#aiProvider').value = s.ai?.provider || 'ollama';
-      if($('#apiKey')) $('#apiKey').value = s.ai?.api_key || '';
+      if($('#aiUrl')) $('#aiUrl').value = s.ai?.url || '';
+      if($('#aiApiKey')) $('#aiApiKey').value = s.ai?.api_key || '';
+      updateAIFields();
+      if($('#aiModel')) $('#aiModel').value = s.ai?.model || '';
 
       const f = s.features || {};
       const map = {
@@ -387,7 +422,9 @@
       theme: ($$('input[name="theme"]:checked')[0]?.value)||'system',
       ai:{
         provider: $('#aiProvider')?.value || 'ollama',
-        api_key: $('#apiKey')?.value?.trim() || ''
+        url: $('#aiUrl')?.value?.trim() || '',
+        api_key: $('#aiApiKey')?.value?.trim() || '',
+        model: $('#aiModel')?.value || ''
       },
       features:{
         enable_text: !!$('#feat_text')?.checked,
