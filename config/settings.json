@@ -10,7 +10,9 @@
   "theme": "system",
   "ai": {
     "provider": "ollama",
-    "api_key": ""
+    "url": "http://localhost:11434",
+    "api_key": "",
+    "model": "llama3"
   },
   "features": {
     "enable_text": true,

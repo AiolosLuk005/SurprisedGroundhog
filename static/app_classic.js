@@ -199,7 +199,7 @@
 
     const selected=exts?exts.split(","):[];
     renderRows(j, selected);
-    applyKwFilter(); // 若有关键词过滤输入，则更新可见行
+    applyKwFilter(); // 若有关键词过滤输入，则筛选
 
     // 页码与统计信息
     currentPage=page;

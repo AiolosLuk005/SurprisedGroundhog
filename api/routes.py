@@ -193,6 +193,8 @@ def update_keywords():
 
 @bp.post("/clear_keywords")
 def clear_keywords():
+    if not SETTINGS.get("features", {}).get("enable_ai_keywords", True):
+        return jsonify({"ok": False, "error": "关键词功能已禁用"}), 403
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
     STATE.setdefault("keywords", {})
@@ -206,6 +208,8 @@ def clear_keywords():
 
 @bp.post("/keywords")
 def gen_keywords():
+    if not SETTINGS.get("features", {}).get("enable_ai_keywords", True):
+        return jsonify({"ok": False, "error": "关键词功能已禁用"}), 403
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
     seeds = (data.get("seeds") or "").strip()
@@ -254,6 +258,8 @@ def apply_ops():
         try:
             action = op.get("action")
             if action == "delete":
+                if not SETTINGS.get("features", {}).get("enable_delete", True):
+                    raise ValueError("删除功能已禁用")
                 src = op.get("path")
                 if not (src and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
@@ -262,6 +268,8 @@ def apply_ops():
                 done += 1
 
             elif action == "move":
+                if not SETTINGS.get("features", {}).get("enable_move", True):
+                    raise ValueError("移动功能已禁用")
                 src, dst_dir = op.get("src"), op.get("dst")
                 if not (src and dst_dir and is_under_allowed_roots(src) and is_under_allowed_roots(dst_dir)):
                     raise ValueError("路径不合法")
@@ -272,6 +280,8 @@ def apply_ops():
                 done += 1
 
             elif action == "rename":
+                if not SETTINGS.get("features", {}).get("enable_rename", True):
+                    raise ValueError("重命名功能已禁用")
                 src, new_name = op.get("src"), op.get("new_name")
                 if not (src and new_name and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
