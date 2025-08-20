@@ -12,7 +12,7 @@ from core.ollama import call_ollama_keywords
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
 from flask import session
-from core.settings import SETTINGS
+from core.settings import SETTINGS, save_settings
 
 bp = Blueprint("full_api", __name__)
 
@@ -56,10 +56,25 @@ def index_page():
     return render_template(
         "full.html",
         allowed_roots=ALLOWED_ROOTS,
-        default_dir=DEFAULT_SCAN_DIR,
+        default_dir="",
         enable_hash_default=ENABLE_HASH_DEFAULT,
-        page_size_default=PAGE_SIZE_DEFAULT
+        page_size_default=PAGE_SIZE_DEFAULT,
+        current_user=session.get("user")
     )
+
+@bp.get("/ls")
+def list_dirs():
+    base = request.args.get("dir")
+    if base:
+        if not is_under_allowed_roots(base):
+            return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
+        try:
+            subs = [str(p) for p in Path(base).iterdir() if p.is_dir()]
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 400
+    else:
+        subs = ALLOWED_ROOTS
+    return jsonify({"ok": True, "subs": subs})
 
 @bp.get("/scan")
 def scan():
@@ -178,6 +193,8 @@ def update_keywords():
 
 @bp.post("/clear_keywords")
 def clear_keywords():
+    if not SETTINGS.get("features", {}).get("enable_ai_keywords", True):
+        return jsonify({"ok": False, "error": "关键词功能已禁用"}), 403
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
     STATE.setdefault("keywords", {})
@@ -191,8 +208,13 @@ def clear_keywords():
 
 @bp.post("/keywords")
 def gen_keywords():
+    if not SETTINGS.get("features", {}).get("enable_ai_keywords", True):
+        return jsonify({"ok": False, "error": "关键词功能已禁用"}), 403
     data = request.get_json(silent=True) or {}
-    paths, seeds = data.get("paths", []), (data.get("seeds") or "").strip()
+    paths = data.get("paths", [])
+    seeds = (data.get("seeds") or "").strip()
+    max_len = int(data.get("max_len", 50))
+    max_len = max(1, min(200, max_len))
     out = {}
     STATE.setdefault("keywords", {})
 
@@ -201,16 +223,15 @@ def gen_keywords():
             continue
         title = Path(p).name
         ext = Path(p).suffix.lower().lstrip(".")
-        cat = _detect_category_local(ext)  # ← 使用本地分类，已包含 ARCHIVE
+        cat = _detect_category_local(ext)
 
-        if cat in ("TEXT","DATA","PDF","SLIDES","ARCHIVE"):
-            # ARCHIVE（zip/rar/7z）在 extract_text_for_keywords 里已支持摘要抽取
+        if cat in ("TEXT", "DATA", "PDF", "SLIDES", "ARCHIVE"):
             body = extract_text_for_keywords(p, max_chars=3000)
-            kw = call_ollama_keywords(title, body, max_total_chars=50, seeds=seeds) or ""
+            kw = call_ollama_keywords(title, body, max_total_chars=max_len, seeds=seeds) or ""
             if not kw:
-                base = Path(p).stem.replace("_"," ").replace("-"," ")
+                base = Path(p).stem.replace("_", " ").replace("-", " ")
                 prefix = (seeds + ", ") if seeds else ""
-                kw = prefix + base[:max(0, 50 - len(prefix))]
+                kw = prefix + base[:max(0, max_len - len(prefix))]
         elif cat == "IMAGE":
             kw = "图片关键词提取功能待实现"
         elif cat == "AUDIO":
@@ -218,9 +239,9 @@ def gen_keywords():
         else:
             base = Path(p).stem
             prefix = (seeds + ", ") if seeds else ""
-            kw = prefix + base[:max(0, 50 - len(prefix))]
+            kw = prefix + base[:max(0, max_len - len(prefix))]
 
-        kw = kw[:50]
+        kw = kw[:max_len]
         out[p] = kw
         STATE["keywords"][p] = kw
 
@@ -237,6 +258,8 @@ def apply_ops():
         try:
             action = op.get("action")
             if action == "delete":
+                if not SETTINGS.get("features", {}).get("enable_delete", True):
+                    raise ValueError("删除功能已禁用")
                 src = op.get("path")
                 if not (src and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
@@ -245,6 +268,8 @@ def apply_ops():
                 done += 1
 
             elif action == "move":
+                if not SETTINGS.get("features", {}).get("enable_move", True):
+                    raise ValueError("移动功能已禁用")
                 src, dst_dir = op.get("src"), op.get("dst")
                 if not (src and dst_dir and is_under_allowed_roots(src) and is_under_allowed_roots(dst_dir)):
                     raise ValueError("路径不合法")
@@ -255,6 +280,8 @@ def apply_ops():
                 done += 1
 
             elif action == "rename":
+                if not SETTINGS.get("features", {}).get("enable_rename", True):
+                    raise ValueError("重命名功能已禁用")
                 src, new_name = op.get("src"), op.get("new_name")
                 if not (src and new_name and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
@@ -310,4 +337,18 @@ def login():
 @bp.get("/logout")
 def logout():
     session.clear()
+    return jsonify({"ok": True})
+
+# -------------------- 设置 --------------------
+@bp.get("/settings")
+def get_settings():
+    return jsonify(SETTINGS)
+
+@bp.post("/settings")
+def update_settings_route():
+    data = request.get_json(silent=True) or {}
+    for key in ("theme", "ai", "features"):
+        if key in data:
+            SETTINGS[key] = data[key]
+    save_settings(SETTINGS)
     return jsonify({"ok": True})

@@ -65,7 +65,7 @@
   .preview-content img, .preview-content video { max-width: 100%; height: auto; }
   </style>
 </head>
-<body>
+<body data-user="{{ current_user or '' }}">
   <div class="topbar">
     <h2 class="brand">Surprised Groundhog · V1.01</h2>
     <img class="logo" src="/static/logo.png" alt="logo">
@@ -102,15 +102,28 @@
 
   <div class="toolbar">
     <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
+    <input id="kwFilter" type="text" placeholder="按关键词筛选" style="min-width:160px;">
+    <button class="btn" id="kwFilterBtn">筛选</button>
     <button class="btn" id="exportBtn">导出 CSV</button>
     <button class="btn" id="importBtn">导入 MySQL</button>
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="kwBlock">
+    <label>关键词长度：</label>
+    <input id="kw_len" type="number" value="50" min="1" max="200" style="width:80px;">
     <button class="btn" id="genKwBtn">提取关键词</button>
     <button class="btn" id="clearKwBtn">清除关键词</button>
+  </div>
+
+  <div class="toolbar" id="moveBlock">
     <button class="btn" id="applyMoveBtn">批量移动</button>
+  </div>
+
+  <div class="toolbar" id="renameBlock">
     <button class="btn" id="applyRenameBtn">批量重命名</button>
+  </div>
+
+  <div class="toolbar" id="deleteBlock">
     <button class="btn" id="applyDeleteBtn">批量删除</button>
   </div>
 
@@ -207,67 +220,56 @@
 
 <!-- 设置弹窗 -->
 <div id="settingsModal" class="confirm-modal" style="display:none;">
-  <div class="confirm-modal-content">
-    <p><strong>系统设置（开发中）</strong></p>
-    <p>将来这里将提供界面主题、AI选择、功能开关等配置</p>
-    <div style="margin-top: 20px;">
+  <div class="confirm-modal-content" style="text-align:left;max-width:600px;">
+    <p><strong>系统设置</strong></p>
+    <div>
+      <label>界面主题：</label>
+      <label class="pill"><input type="radio" name="theme" value="light"> 亮色调</label>
+      <label class="pill"><input type="radio" name="theme" value="dark"> 暗色调</label>
+      <label class="pill"><input type="radio" name="theme" value="system"> 跟随系统</label>
+    </div>
+    <div style="margin-top:10px;">
+      <label for="aiProvider">AI 选择：</label>
+      <select id="aiProvider">
+        <option value="ollama">Ollama</option>
+        <option value="chatgpt">ChatGPT</option>
+        <option value="deepseek">Deepseek</option>
+      </select>
+      <input id="aiUrl" placeholder="服务 URL" style="width:90%;margin-top:6px;">
+      <input id="aiApiKey" placeholder="API Key" style="width:90%;margin-top:6px;">
+      <select id="aiModel" style="width:90%;margin-top:6px;">
+        <option value="llama3">llama3</option>
+        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+        <option value="gpt-4">gpt-4</option>
+        <option value="deepseek-chat">deepseek-chat</option>
+      </select>
+    </div>
+    <div style="margin-top:10px;">
+      <p>文件类型开关：</p>
+      <label class="pill"><input type="checkbox" id="feat_text"> 文字类型</label>
+      <label class="pill"><input type="checkbox" id="feat_data"> 数据类型</label>
+      <label class="pill"><input type="checkbox" id="feat_slides"> 简报类型</label>
+      <label class="pill"><input type="checkbox" id="feat_pdf"> PDF 类型</label>
+      <label class="pill"><input type="checkbox" id="feat_archive"> 压缩类型</label>
+      <label class="pill"><input type="checkbox" id="feat_image"> 图片类型</label>
+      <label class="pill"><input type="checkbox" id="feat_video"> 视频类型</label>
+      <label class="pill"><input type="checkbox" id="feat_audio"> 音频类型</label>
+    </div>
+    <div style="margin-top:10px;">
+      <p>操作功能开关：</p>
+      <label class="pill"><input type="checkbox" id="feat_ai_keywords"> AI 提取关键词</label>
+      <label class="pill"><input type="checkbox" id="feat_move"> 移动文件</label>
+      <label class="pill"><input type="checkbox" id="feat_rename"> 重命名</label>
+      <label class="pill"><input type="checkbox" id="feat_delete"> 删除文件</label>
+      <label class="pill"><input type="checkbox" id="feat_image_caption"> 图像反向提示词</label>
+      <label class="pill"><input type="checkbox" id="feat_video_preview"> 视频预览</label>
+      <label class="pill"><input type="checkbox" id="feat_audio_preview"> 音频预览</label>
+    </div>
+    <div style="margin-top:20px;text-align:center;">
+      <button class="btn" id="settingsSave">保存</button>
       <button class="btn" id="settingsClose">关闭</button>
     </div>
   </div>
 </div>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  // 添加 设置按钮
-  const topbar = document.querySelector(".topbar");
-  const settingsBtn = document.createElement("button");
-  settingsBtn.textContent = "⚙️ 设置";
-  settingsBtn.className = "btn btn-sm";
-  settingsBtn.style.marginLeft = "12px";
-  settingsBtn.onclick = () => {
-    document.getElementById("settingsModal").style.display = "flex";
-  };
-  topbar?.appendChild(settingsBtn);
-
-  // 设置关闭按钮
-  document.getElementById("settingsClose")?.addEventListener("click", () => {
-    document.getElementById("settingsModal").style.display = "none";
-  });
-
-  // 登录按钮（可选添加）
-  const loginBtn = document.createElement("button");
-  loginBtn.textContent = "🔐 登录";
-  loginBtn.className = "btn btn-sm";
-  loginBtn.onclick = () => {
-    document.getElementById("loginModal").style.display = "flex";
-  };
-  topbar?.appendChild(loginBtn);
-
-  // 登录确认事件
-  document.getElementById("loginConfirm")?.addEventListener("click", async () => {
-    const username = document.getElementById("loginUser").value.trim();
-    const password = document.getElementById("loginPass").value.trim();
-    const res = await fetch("/full/login", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({username, password})
-    });
-    const j = await res.json();
-    if (j.ok) {
-      alert("登录成功");
-      document.getElementById("loginModal").style.display = "none";
-      location.reload();
-    } else {
-      alert("登录失败：" + (j.error || "未知错误"));
-    }
-  });
-
-  // 登录取消
-  document.getElementById("loginCancel")?.addEventListener("click", () => {
-    document.getElementById("loginModal").style.display = "none";
-  });
-});
-</script>
-
 </body>
 </html>
