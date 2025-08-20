@@ -180,14 +180,14 @@
 
     let j=null;
     try{ j=await res.r.json(); }catch(e){ toggleLoading(false); customConfirm("响应解析失败").then(()=>{}); return; }
-    toggleLoading(false);
+      toggleLoading(false);
 
-    if(!j || !j.ok){ customConfirm("接口返回错误").then(()=>{}); return; }
+      if(!j || !j.ok){ customConfirm("接口返回错误").then(()=>{}); return; }
 
-    const selected=exts?exts.split(","):[];
-    renderRows(result.data, selected);
-    $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项 · 接口 ${result.url}`;
-  }
+      const selected=exts?exts.split(","):[];
+      renderRows(j, selected);
+      $("#pageinfo").textContent=`本页 ${($$("#tbl tbody tr").length)} 项 · 接口 ${res.u}`;
+    }
 
   function renderRows(payload, selectedExts){
     const tbody=$("#tbl tbody"); if(!tbody) return;
