@@ -70,13 +70,16 @@
   </style>
   </head>
 <body data-user="{{ session.get('user', '') }}">
-  <div class="topbar">
-    <div class="topbar-left">
-      <img class="logo" src="/static/logo.png" alt="logo">
-      <h2 class="brand">Surprised Groundhog · V1.01</h2>
+    <div class="topbar">
+      <div class="topbar-left">
+        <img class="logo" src="/static/logo.png" alt="logo">
+        <h2 class="brand">Surprised Groundhog · V1.01</h2>
+      </div>
+    <div id="userTools">
+      <button class="btn btn-sm" id="settingsBtn">设置</button>
+      <button class="btn btn-sm" id="loginBtn">登录</button>
     </div>
-    <div id="userTools"></div>
-  </div>
+    </div>
 
   <div class="row">
     <label for="category">档案种类：</label>

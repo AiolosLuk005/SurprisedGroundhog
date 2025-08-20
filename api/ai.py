@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 from core.ollama import call_ollama_keywords
+import json, urllib.request
+from core.settings import SETTINGS
 
 bp = Blueprint("ai", __name__, url_prefix="/api/ai")
 
@@ -12,6 +14,17 @@ def _contains_pathlike(s: str) -> bool:
 @bp.get("/health")
 def health():
     return jsonify({"ok": True})
+
+@bp.get("/ollama/models")
+def list_ollama_models():
+    base = SETTINGS.get("ai", {}).get("url", "http://localhost:11434").rstrip("/")
+    try:
+        with urllib.request.urlopen(f"{base}/api/tags", timeout=5) as resp:
+            data = json.load(resp)
+            models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+    except Exception:
+        models = []
+    return jsonify({"ok": True, "models": models})
 
 @bp.post("/keywords")
 def keywords():
