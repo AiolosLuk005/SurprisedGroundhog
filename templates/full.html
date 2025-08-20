@@ -237,15 +237,23 @@
           <div class="grid-2">
             <div>
               <label>AI 供应商：</label>
-              <select id="aiProvider" style="min-width:180px;">
+              <select id="aiProvider" style="min-width:180px;" onchange="updateAIFields()">
                 <option value="ollama">Ollama（本地）</option>
                 <option value="chatgpt">OpenAI / ChatGPT</option>
                 <option value="deepseek">DeepSeek</option>
               </select>
             </div>
             <div>
+              <label>API URL：</label>
+              <input id="aiUrl" placeholder="接口地址" style="min-width:260px;">
+            </div>
+            <div>
               <label>API Key：</label>
-              <input id="apiKey" type="password" placeholder="如使用远程 AI，请填写 API Key" style="min-width:260px;">
+              <input id="aiApiKey" type="password" placeholder="如使用远程 AI，请填写 API Key" style="min-width:260px;">
+            </div>
+            <div>
+              <label>模型：</label>
+              <select id="aiModel" style="min-width:180px;"></select>
             </div>
           </div>
           <div class="small-muted">说明：本地 Ollama 不需要 API Key；远程 AI 需要。</div>
