@@ -1,7 +1,8 @@
 {
   "auth": {
     "admin_username": "admin",
-    "admin_password": "admin"
+    "admin_password": "admin",
+    "secret_key": "change-me"
   },
   "permissions": {
     "admin": 1
