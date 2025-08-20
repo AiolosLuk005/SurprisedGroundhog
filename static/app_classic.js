@@ -247,7 +247,14 @@
       modelSel.innerHTML='';
       let models=[];
       if(p==='ollama'){
-        try{ const r=await fetch('/api/ai/ollama/models',{credentials:'include'}); const j=await r.json(); models=j.models||[]; }catch(e){ models=[]; }
+        try{
+          const r=await fetch('/api/ai/ollama/models',{credentials:'include'});
+          const j=await r.json();
+          models=j.models||[];
+        }catch(e){ models=[]; }
+        if(models.length===0){
+          models=['gpt-oss:20b','deepseek-r1:14b','llama3.1:latest'];
+        }
       }else if(p==='chatgpt'){
         models=['gpt-3.5-turbo','gpt-4','gpt-4o'];
       }else if(p==='deepseek'){
@@ -519,6 +526,10 @@
     // 预览（事件委托）
     const tbody=$('#tbl tbody');
     if(tbody) tbody.addEventListener('click', onPreview);
+
+    // 固定按钮绑定（HTML 已包含时直接绑定）
+    bind('#settingsBtn','click', openSettings);
+    bind('#loginBtn','click', ()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); });
 
     // 顶部工具区：若未在 HTML 放固定按钮，这里兜底加入“设置/登录”
     const topbar = document.querySelector('.topbar');
