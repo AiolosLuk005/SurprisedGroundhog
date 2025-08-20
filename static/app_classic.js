@@ -1,4 +1,4 @@
-// Classic UI fix 20250818d: batch ops + confirms + preview + /full/* paths
+// Classic UI fix 20250820b: batch ops + confirms + preview + pagination + login/settings
 (function(){
   const TYPES={
     TEXT:["docx","doc","txt","md","rtf"],
@@ -11,9 +11,9 @@
     AUDIO:["mp3","wav","m4a","flac"]
   };
 
-  const $=s=>document.querySelector(s);
-  const $$=s=>Array.from(document.querySelectorAll(s));
-  const qs=v=>encodeURIComponent(v||"");
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const qs = v => encodeURIComponent(v||"");
 
   function toggleLoading(on, msg){
     const el = $("#loading");
@@ -86,11 +86,12 @@
     applyOps:["/full/apply_ops"],
     ls:["/ls"] // 会被统一入口重写到 /full/ls
   };
+
+  // ---- paging state ----
   let lastQuery=null;
   let currentPage=1;
   let totalPages=1;
-  let moveMode=false, renameMode=false, deleteMode=false;
-  let features={};
+
   async function firstOK(urls,opts){
     let lastErr=null;
     for(const u of urls){
@@ -171,21 +172,39 @@
   async function loadPage(page){
     if(!lastQuery) return;
     const {dir,recur,pageSize,exts,cat,q,withHash}=lastQuery;
-    const params=`dir=${qs(dir)}&hash=${withHash}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
+    const params=`dir=${qs(dir)}&hash=${withHash||0}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
+
     toggleLoading(true, "正在扫描文件…");
     const res=await firstOK(candidates);
     toggleLoading(false);
-    if(!res.ok){ customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{}); return; }
+
+    if(!res.ok){
+      customConfirm("扫描失败："+(res.error?res.error.message:"接口不可用")).then(()=>{});
+      return;
+    }
+
     let j=null;
-    try{ j=await res.r.json(); }catch(e){ customConfirm("响应解析失败").then(()=>{}); return; }
-    if(!j || !j.ok){ customConfirm("接口返回错误").then(()=>{}); return; }
+    try{
+      j=await res.r.json();
+    }catch(e){
+      customConfirm("响应解析失败").then(()=>{});
+      return;
+    }
+
+    if(!j || !j.ok){
+      customConfirm("接口返回错误").then(()=>{});
+      return;
+    }
+
     const selected=exts?exts.split(","):[];
     renderRows(j, selected);
-    applyKwFilter();
+    applyKwFilter(); // 若有关键词过滤输入，则筛选
+
+    // 页码与统计信息
     currentPage=page;
     const total=j.total||0;
-    totalPages=Math.max(1, Math.ceil(total/pageSize));
+    totalPages=Math.max(1, Math.ceil(total/(pageSize||1)));
     $("#count").textContent=`扫描结果：共 ${total} 项，共 ${totalPages} 页`;
     $("#pageinfo").textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${($$("#tbl tbody tr").length)} 项`;
     $("#prev").disabled=currentPage<=1;
@@ -193,7 +212,11 @@
   }
 
   async function onScan(){
-    const dir=($("#dir")?.value||"").trim(); if(!dir){ customConfirm("请选择扫描目录").then(()=>{}); return; }
+    const dir=($("#dir")?.value||"").trim();
+    if(!dir){
+      customConfirm("请选择扫描目录").then(()=>{});
+      return;
+    }
     lastQuery={
       dir,
       recur:$("#recur")?.checked?1:0,
@@ -218,7 +241,6 @@
       const sizeKB=humanKBFromAny(it.size_kb ?? it.sizeKB ?? it.size_bytes ?? it.size ?? it.bytes);
       const mtime=parseMTime(it);
       const tr=document.createElement("tr");
-      const previewDisabled = (it.category==='VIDEO' && !features.enable_video_preview) || (it.category==='AUDIO' && !features.enable_audio_preview);
       tr.innerHTML=`
         <td><input type="checkbox" class="ck" data-path="${full}"></td>
         <td>${it.name||it.filename||""}</td>
@@ -228,119 +250,117 @@
         <td>${sizeKB}</td>
         <td>${mtime}</td>
         <td class="kw">${it.keywords||""}</td>
-        <td><input class="mv" placeholder="目标目录" disabled></td>
-        <td><input class="rn" placeholder="新文件名" disabled></td>
-        <td><button class="btn btn-sm pv" ${previewDisabled?'disabled':''} data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
-    tbody.appendChild(tr);
+        <td><input class="mv" placeholder="目标目录"></td>
+        <td><input class="rn" placeholder="新文件名"></td>
+        <td><button class="btn btn-sm pv" data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
+      tbody.appendChild(tr);
     });
   }
 
-  function applyFeatureToggles(s){
-    features=s.features||{};
-    const map={TEXT:'enable_text',DATA:'enable_data',SLIDES:'enable_slides',PDF:'enable_pdf',ARCHIVE:'enable_archive',IMAGE:'enable_image',VIDEO:'enable_video',AUDIO:'enable_audio'};
-    Object.entries(map).forEach(([cat,key])=>{
-      const opt=$(`#category option[value="${cat}"]`); if(opt){ opt.disabled=!features[key]; }
-    });
-    if(!features.enable_ai_keywords){ $('#kw_len').disabled=true; $('#genKwBtn').disabled=true; $('#clearKwBtn').disabled=true; }
-    if(!features.enable_move){ $('#applyMoveBtn').disabled=true; }
-    if(!features.enable_rename){ $('#applyRenameBtn').disabled=true; }
-    if(!features.enable_delete){ $('#applyDeleteBtn').disabled=true; }
-  }
-
-  function updateAIFields(){
-    const p=$('#aiProvider')?.value;
-    if(p==='ollama'){
-      $('#aiApiKey').style.display='none';
-    }else{
-      $('#aiApiKey').style.display='block';
-    }
-  }
-
+  // 关键词过滤（表内实时筛选）
   function applyKwFilter(){
-    const kw = $("#kwFilter")?.value.trim();
+    const kw = $("#kwFilter")?.value?.trim() || "";
     const terms = kw ? kw.split(/\s+/).filter(Boolean) : [];
     const rows = $$("#tbl tbody tr");
-    rows.forEach(tr=>{
-      if(!terms.length){ tr.style.display=""; return; }
-      const text = tr.querySelector('.kw').textContent;
-      const ok = terms.every(t=>text.includes(t));
-      tr.style.display = ok ? '' : 'none';
-    });
+    if(!rows.length) return;
+    if(!terms.length){
+      rows.forEach(tr=>tr.style.display="");
+    }else{
+      rows.forEach(tr=>{
+        const text = tr.querySelector('.kw')?.textContent || "";
+        const ok = terms.every(t=>text.includes(t));
+        tr.style.display = ok ? '' : 'none';
+      });
+    }
     const visible = rows.filter(tr=>tr.style.display!=='none').length;
-    $("#pageinfo")?.textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`;
+    if($("#pageinfo")) $("#pageinfo").textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`;
   }
 
+  // 设置弹窗：拉取/渲染
   async function openSettings(){
-    const res = await fetch('/full/settings');
-    const s = await res.json();
-    if(s.theme){ $$('input[name="theme"]').forEach(r=>r.checked=(r.value===s.theme)); }
-    $('#aiProvider').value = s.ai?.provider || 'ollama';
-    $('#aiUrl').value = s.ai?.url || '';
-    $('#aiApiKey').value = s.ai?.api_key || '';
-    $('#aiModel').value = s.ai?.model || '';
-    updateAIFields();
-    const f = s.features || {};
-    $('#feat_text').checked = !!f.enable_text;
-    $('#feat_data').checked = !!f.enable_data;
-    $('#feat_slides').checked = !!f.enable_slides;
-    $('#feat_pdf').checked = !!f.enable_pdf;
-    $('#feat_archive').checked = !!f.enable_archive;
-    $('#feat_image').checked = !!f.enable_image;
-    $('#feat_video').checked = !!f.enable_video;
-    $('#feat_audio').checked = !!f.enable_audio;
-    $('#feat_ai_keywords').checked = !!f.enable_ai_keywords;
-    $('#feat_move').checked = !!f.enable_move;
-    $('#feat_rename').checked = !!f.enable_rename;
-    $('#feat_delete').checked = !!f.enable_delete;
-    $('#feat_image_caption').checked = !!f.enable_image_caption;
-    $('#feat_video_preview').checked = !!f.enable_video_preview;
-    $('#feat_audio_preview').checked = !!f.enable_audio_preview;
-    $('#settingsModal').style.display='flex';
+    try{
+      const res = await fetch('/full/settings');
+      const s = await res.json();
+      if(s.theme){ $$('input[name="theme"]').forEach(r=>r.checked=(r.value===s.theme)); }
+      if($('#aiProvider')) $('#aiProvider').value = s.ai?.provider || 'ollama';
+      if($('#apiKey')) $('#apiKey').value = s.ai?.api_key || '';
+
+      const f = s.features || {};
+      const map = {
+        feat_text: 'enable_text',
+        feat_data: 'enable_data',
+        feat_slides: 'enable_slides',
+        feat_pdf: 'enable_pdf',
+        feat_archive: 'enable_archive',
+        feat_image: 'enable_image',
+        feat_video: 'enable_video',
+        feat_audio: 'enable_audio',
+        feat_ai_keywords: 'enable_ai_keywords',
+        feat_move: 'enable_move',
+        feat_rename: 'enable_rename',
+        feat_delete: 'enable_delete',
+        feat_image_caption: 'enable_image_caption',
+        feat_video_preview: 'enable_video_preview',
+        feat_audio_preview: 'enable_audio_preview'
+      };
+      Object.entries(map).forEach(([id,key])=>{
+        const el = $('#'+id);
+        if(el) el.checked = !!f[key];
+      });
+    }catch(e){
+      console.warn('读取设置失败：', e);
+    }
+    if($('#settingsModal')) $('#settingsModal').style.display='flex';
   }
 
+  // 设置弹窗：保存
   async function saveSettings(){
     const payload={
       theme: ($$('input[name="theme"]:checked')[0]?.value)||'system',
       ai:{
-        provider: $('#aiProvider').value,
-        url: $('#aiUrl').value.trim(),
-        api_key: $('#aiApiKey').value.trim(),
-        model: $('#aiModel').value
+        provider: $('#aiProvider')?.value || 'ollama',
+        api_key: $('#apiKey')?.value?.trim() || ''
       },
       features:{
-        enable_text: $('#feat_text').checked,
-        enable_data: $('#feat_data').checked,
-        enable_slides: $('#feat_slides').checked,
-        enable_pdf: $('#feat_pdf').checked,
-        enable_archive: $('#feat_archive').checked,
-        enable_image: $('#feat_image').checked,
-        enable_video: $('#feat_video').checked,
-        enable_audio: $('#feat_audio').checked,
-        enable_ai_keywords: $('#feat_ai_keywords').checked,
-        enable_move: $('#feat_move').checked,
-        enable_rename: $('#feat_rename').checked,
-        enable_delete: $('#feat_delete').checked,
-        enable_image_caption: $('#feat_image_caption').checked,
-        enable_video_preview: $('#feat_video_preview').checked,
-        enable_audio_preview: $('#feat_audio_preview').checked
+        enable_text: !!$('#feat_text')?.checked,
+        enable_data: !!$('#feat_data')?.checked,
+        enable_slides: !!$('#feat_slides')?.checked,
+        enable_pdf: !!$('#feat_pdf')?.checked,
+        enable_archive: !!$('#feat_archive')?.checked,
+        enable_image: !!$('#feat_image')?.checked,
+        enable_video: !!$('#feat_video')?.checked,
+        enable_audio: !!$('#feat_audio')?.checked,
+        enable_ai_keywords: !!$('#feat_ai_keywords')?.checked,
+        enable_move: !!$('#feat_move')?.checked,
+        enable_rename: !!$('#feat_rename')?.checked,
+        enable_delete: !!$('#feat_delete')?.checked,
+        enable_image_caption: !!$('#feat_image_caption')?.checked,
+        enable_video_preview: !!$('#feat_video_preview')?.checked,
+        enable_audio_preview: !!$('#feat_audio_preview')?.checked
       }
     };
-    await fetch('/full/settings', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    alert('已保存');
-    location.reload();
+    try{
+      await fetch('/full/settings', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      alert('已保存');
+    }catch(e){
+      alert('保存失败：'+e.message);
+    }
+    if($('#settingsModal')) $('#settingsModal').style.display='none';
   }
 
+  // 导出 CSV
   function onExport(){
     if(!lastQuery){ customConfirm('请先扫描').then(()=>{}); return; }
     const {dir,withHash,recur,cat,exts}=lastQuery;
-    const url=`${PATHS.exportCSV[0]}?dir=${qs(dir)}&hash=${withHash}&recursive=${recur}&category=${qs(cat)}&types=${qs(exts)}`;
+    const url=`${PATHS.exportCSV[0]}?dir=${qs(dir)}&hash=${withHash||0}&recursive=${recur}&category=${qs(cat)}&types=${qs(exts)}`;
     window.open(url,'_blank');
   }
 
+  // ---- batch ops / keywords / clear ----
   async function onApplyOps(action) {
     const selectedRows = $$('#tbl tbody .ck:checked');
     if (selectedRows.length === 0) { customConfirm("请选择要操作的文件。").then(() => {}); return; }
@@ -355,16 +375,15 @@
       confirmMessage = `确认移动 ${selectedRows.length} 个文件吗？`;
       selectedRows.forEach(cb => {
         const row = cb.closest('tr');
-        const dst = row.querySelector('.mv').value.trim();
-        if (dst && dst !== cb.dataset.path) ops.push({ action: 'move', src: cb.dataset.path, dst });
+        const dst = row.querySelector('.mv')?.value.trim();
+        if (dst) ops.push({ action: 'move', src: cb.dataset.path, dst });
       });
     } else if (action === 'rename') {
       confirmMessage = `确认重命名 ${selectedRows.length} 个文件吗？`;
       selectedRows.forEach(cb => {
         const row = cb.closest('tr');
-        const newName = row.querySelector('.rn').value.trim();
-        const orig = cb.dataset.path.split(/[\\/]/).pop();
-        if (newName && newName !== orig) ops.push({ action: 'rename', src: cb.dataset.path, new_name: newName });
+        const newName = row.querySelector('.rn')?.value.trim();
+        if (newName) ops.push({ action: 'rename', src: cb.dataset.path, new_name: newName });
       });
     }
 
@@ -459,108 +478,71 @@
   }
 
   // ---- bind ----
-  document.addEventListener("DOMContentLoaded", async () => {
-  const s = await (await fetch('/full/settings')).json();
-  applyFeatureToggles(s);
-  fillTypes();
-  $("#category")?.addEventListener("change", fillTypes);
-  $("#pickDir")?.addEventListener("click", showDirModal);
-  $("#scanBtn")?.addEventListener("click", onScan);
-  $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
-  $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
-  $("#exportBtn")?.addEventListener("click", onExport);
-  $("#kwFilterBtn")?.addEventListener("click", applyKwFilter);
-  $("#kwFilter")?.addEventListener("input", (e)=>{ if(!e.target.value) applyKwFilter(); });
+  document.addEventListener("DOMContentLoaded", () => {
+    fillTypes();
+    $("#category")?.addEventListener("change", fillTypes);
+    $("#pickDir")?.addEventListener("click", showDirModal);
+    $("#scanBtn")?.addEventListener("click", onScan);
+    $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
+    $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
 
-  $('#aiProvider')?.addEventListener('change', updateAIFields);
+    // 导出 & 关键词过滤控件（如存在）
+    $("#exportBtn")?.addEventListener("click", onExport);
+    $("#kwFilterBtn")?.addEventListener("click", applyKwFilter);
+    $("#kwFilter")?.addEventListener("input", (e)=>{ if(!e.target.value) applyKwFilter(); });
 
-  $("#applyMoveBtn")?.addEventListener("click", async () => {
-      if($("#applyMoveBtn").disabled) return;
-      if(!moveMode){
-          moveMode=true; renameMode=false; deleteMode=false;
-          $("#applyMoveBtn").textContent='执行移动';
-          $("#applyRenameBtn").textContent='批量重命名';
-          $("#applyDeleteBtn").textContent='批量删除';
-          $$('.rn').forEach(i=>{i.value=''; i.disabled=true;});
-      } else {
-          await onApplyOps('move'); moveMode=false; $("#applyMoveBtn").textContent='批量移动'; $$('.mv').forEach(i=>{i.value=''; i.disabled=true;});
-      }
-  });
-  $("#applyRenameBtn")?.addEventListener("click", async () => {
-      if($("#applyRenameBtn").disabled) return;
-      if(!renameMode){
-          renameMode=true; moveMode=false; deleteMode=false;
-          $("#applyRenameBtn").textContent='执行重命名';
-          $("#applyMoveBtn").textContent='批量移动';
-          $("#applyDeleteBtn").textContent='批量删除';
-          $$('.mv').forEach(i=>{i.value=''; i.disabled=true;});
-      } else {
-          await onApplyOps('rename'); renameMode=false; $("#applyRenameBtn").textContent='批量重命名'; $$('.rn').forEach(i=>{i.value=''; i.disabled=true;});
-      }
-  });
-  $("#applyDeleteBtn")?.addEventListener("click", async () => {
-      if($("#applyDeleteBtn").disabled) return;
-      if(!deleteMode){
-          deleteMode=true; moveMode=false; renameMode=false;
-          $("#applyDeleteBtn").textContent='执行删除';
-          $("#applyMoveBtn").textContent='批量移动';
-          $("#applyRenameBtn").textContent='批量重命名';
-          $$('.mv').forEach(i=>{i.value=''; i.disabled=true;});
-          $$('.rn').forEach(i=>{i.value=''; i.disabled=true;});
-      } else {
-          await onApplyOps('delete'); deleteMode=false; $("#applyDeleteBtn").textContent='批量删除';
-      }
-  });
+    // 批量操作
+    $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
+    $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
+    $("#applyDeleteBtn")?.addEventListener("click", () => onApplyOps('delete'));
 
-  $("#genKwBtn")?.addEventListener("click", onGenKw);
-  $("#clearKwBtn")?.addEventListener("click", onClearKw);
+    // 关键词
+    $("#genKwBtn")?.addEventListener("click", onGenKw);
+    $("#clearKwBtn")?.addEventListener("click", onClearKw);
 
-  $('#tbl tbody')?.addEventListener('click', (e) => {
+    // 预览（委托）
+    $('#tbl tbody')?.addEventListener('click', (e) => {
       if (e.target.classList.contains('pv')) onPreview(e);
-  });
-  $('#tbl tbody')?.addEventListener('change', (e)=>{
-      if(e.target.classList.contains('ck')){
-          const cb=e.target; const row=cb.closest('tr');
-          if(moveMode){ const mv=row.querySelector('.mv'); mv.disabled=!cb.checked; mv.value=cb.checked?cb.dataset.path:''; }
-          if(renameMode){ const rn=row.querySelector('.rn'); rn.disabled=!cb.checked; rn.value=cb.checked?cb.dataset.path.split(/[\\/]/).pop():''; }
-      }
-  });
+    });
 
-  const topbar = document.querySelector('.topbar');
-  const settingsBtn = document.createElement('button');
-  settingsBtn.textContent = '⚙️ 设置';
-  settingsBtn.className = 'btn btn-sm';
-  settingsBtn.style.marginLeft = '12px';
-  settingsBtn.onclick = openSettings;
-  topbar?.appendChild(settingsBtn);
+    // ---- settings / login UI ----
+    const topbar = document.querySelector('.topbar');
 
-  const user=document.body.dataset.user;
-  if(user){
+    const settingsBtn = document.createElement('button');
+    settingsBtn.textContent = '⚙️ 设置';
+    settingsBtn.className = 'btn btn-sm';
+    settingsBtn.style.marginLeft = '12px';
+    settingsBtn.onclick = openSettings;
+    topbar?.appendChild(settingsBtn);
+
+    const user=document.body.dataset.user;
+    if(user){
       const userSpan=document.createElement('span');
       userSpan.textContent=`👤 ${user}`;
       userSpan.style.marginLeft='12px';
       topbar?.appendChild(userSpan);
+
       const logoutBtn=document.createElement('button');
       logoutBtn.textContent='退出';
       logoutBtn.className='btn btn-sm';
       logoutBtn.style.marginLeft='8px';
       logoutBtn.onclick=async()=>{ await fetch('/full/logout'); location.reload(); };
       topbar?.appendChild(logoutBtn);
-  }else{
+    }else{
       const loginBtn=document.createElement('button');
       loginBtn.textContent='🔐 登录';
       loginBtn.className='btn btn-sm';
       loginBtn.style.marginLeft='12px';
       loginBtn.onclick=()=>{ document.getElementById('loginModal').style.display='flex'; };
       topbar?.appendChild(loginBtn);
-  }
+    }
 
-  document.getElementById('settingsClose')?.addEventListener('click', () => {
+    document.getElementById('settingsClose')?.addEventListener('click', () => {
       document.getElementById('settingsModal').style.display = 'none';
-  });
-  document.getElementById('settingsSave')?.addEventListener('click', saveSettings);
+    });
+    document.getElementById('settingsSave')?.addEventListener('click', saveSettings);
 
-  document.getElementById('loginConfirm')?.addEventListener('click', async () => {
+    document.getElementById('loginConfirm')?.addEventListener('click', async () => {
       const username = document.getElementById('loginUser').value.trim();
       const password = document.getElementById('loginPass').value.trim();
       const res = await fetch('/full/login', {
@@ -576,10 +558,10 @@
       } else {
         alert('登录失败：' + (j.error || '未知错误'));
       }
-  });
+    });
 
-  document.getElementById('loginCancel')?.addEventListener('click', () => {
+    document.getElementById('loginCancel')?.addEventListener('click', () => {
       document.getElementById('loginModal').style.display = 'none';
-  });
+    });
   });
 })();

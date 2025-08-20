@@ -49,23 +49,29 @@
   }
   .spinner.hourglass:before{ top:0; border-bottom:14px solid #111827; }
   .spinner.hourglass:after{ bottom:0; border-top:14px solid #111827; animation-delay:.6s; }
-  @keyframes flip{ 0%,100%{ transform: scaleY(1);} 50%{ transform: scaleY(0.2);} }
   .loading-text { font-size: 12px; color:#444; }
 
-  /* 确认 / 预览弹窗 */
+  /* 确认 / 预览 / 设置 / 登录 弹窗 */
   .confirm-modal, .preview-modal {
     position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 10000;
     align-items: center; justify-content: center;
   }
   .confirm-modal-content, .preview-modal-content {
-    background: #fff; padding: 20px; border-radius: 8px; max-width: 500px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center;
+    background: #fff; padding: 20px; border-radius: 8px; max-width: 920px; width: 92vw;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: left;
   }
   .preview-content { max-width: 100%; max-height: 80vh; overflow: auto; }
   .preview-content img, .preview-content video { max-width: 100%; height: auto; }
+
+  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row-inline { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .section-title{ font-weight:600; margin:10px 0 6px; }
+  .small-muted{ color:#666; font-size:12px; }
   </style>
 </head>
-<body data-user="{{ current_user or '' }}">
+
+<!-- 加上 data-user 便于 JS 显示登录用户 -->
+<body data-user="{{ session.get('user', '') }}">
   <div class="topbar">
     <h2 class="brand">Surprised Groundhog · V1.01</h2>
     <img class="logo" src="/static/logo.png" alt="logo">
@@ -102,28 +108,20 @@
 
   <div class="toolbar">
     <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
-    <input id="kwFilter" type="text" placeholder="按关键词筛选" style="min-width:160px;">
-    <button class="btn" id="kwFilterBtn">筛选</button>
     <button class="btn" id="exportBtn">导出 CSV</button>
     <button class="btn" id="importBtn">导入 MySQL</button>
+
+    <!-- 可选：关键词筛选（如果不用可忽略，JS已做可选绑定） -->
+    <input id="kwFilter" type="text" placeholder="按关键词筛选" style="min-width:180px;">
+    <button class="btn btn-sm" id="kwFilterBtn">筛选</button>
+    <input id="kw_len" type="number" min="1" max="200" value="50" style="width:70px" title="关键词最大长度">
   </div>
 
-  <div class="toolbar" id="kwBlock">
-    <label>关键词长度：</label>
-    <input id="kw_len" type="number" value="50" min="1" max="200" style="width:80px;">
+  <div class="toolbar">
     <button class="btn" id="genKwBtn">提取关键词</button>
     <button class="btn" id="clearKwBtn">清除关键词</button>
-  </div>
-
-  <div class="toolbar" id="moveBlock">
     <button class="btn" id="applyMoveBtn">批量移动</button>
-  </div>
-
-  <div class="toolbar" id="renameBlock">
     <button class="btn" id="applyRenameBtn">批量重命名</button>
-  </div>
-
-  <div class="toolbar" id="deleteBlock">
     <button class="btn" id="applyDeleteBtn">批量删除</button>
   </div>
 
@@ -176,7 +174,7 @@
   <div id="confirmModal" class="confirm-modal" style="display:none;">
     <div class="confirm-modal-content">
       <p id="confirmMessage"></p>
-      <div style="margin-top: 20px;">
+      <div style="margin-top: 20px; text-align:center;">
         <button class="btn" id="confirmOk">确认</button>
         <button class="btn" id="confirmCancel">取消</button>
       </div>
@@ -194,6 +192,84 @@
     </div>
   </div>
 
+  <!-- 登录弹窗 -->
+  <div id="loginModal" class="confirm-modal" style="display:none;">
+    <div class="confirm-modal-content">
+      <p><strong>管理员登录</strong></p>
+      <div style="margin-top: 10px;">
+        <input id="loginUser" placeholder="用户名" style="margin-bottom:8px;width: 80%;"><br>
+        <input id="loginPass" type="password" placeholder="密码" style="width: 80%;">
+      </div>
+      <div style="margin-top: 20px; text-align:center;">
+        <button class="btn" id="loginConfirm">登录</button>
+        <button class="btn" id="loginCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗（含主题、AI供应商、功能开关） -->
+  <div id="settingsModal" class="confirm-modal" style="display:none;">
+    <div class="confirm-modal-content">
+      <div class="modal-head">
+        <strong>系统设置</strong>
+        <button class="btn btn-sm" id="settingsClose">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="section-title">界面主题</div>
+          <div class="row-inline">
+            <label class="pill"><input type="radio" name="theme" value="light"> 亮色调</label>
+            <label class="pill"><input type="radio" name="theme" value="dark"> 暗色调</label>
+            <label class="pill"><input type="radio" name="theme" value="system" checked> 跟随系统</label>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <div class="section-title">AI 设置</div>
+          <div class="grid-2">
+            <div>
+              <label>AI 供应商：</label>
+              <select id="aiProvider" style="min-width:180px;">
+                <option value="ollama">Ollama（本地）</option>
+                <option value="chatgpt">OpenAI / ChatGPT</option>
+                <option value="deepseek">DeepSeek</option>
+              </select>
+            </div>
+            <div>
+              <label>API Key：</label>
+              <input id="apiKey" type="password" placeholder="如使用远程 AI，请填写 API Key" style="min-width:260px;">
+            </div>
+          </div>
+          <div class="small-muted">说明：本地 Ollama 不需要 API Key；远程 AI 需要。</div>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <div class="section-title">功能权限开关</div>
+          <div class="grid-2">
+            <label class="pill"><input type="checkbox" id="feat_text" checked> 文字类型</label>
+            <label class="pill"><input type="checkbox" id="feat_data" checked> 数据类型</label>
+            <label class="pill"><input type="checkbox" id="feat_slides" checked> 简报类型</label>
+            <label class="pill"><input type="checkbox" id="feat_pdf" checked> PDF 类型</label>
+            <label class="pill"><input type="checkbox" id="feat_archive" checked> 压缩类型</label>
+            <label class="pill"><input type="checkbox" id="feat_image" checked> 图片类型</label>
+            <label class="pill"><input type="checkbox" id="feat_video"> 视频类型</label>
+            <label class="pill"><input type="checkbox" id="feat_audio"> 音频类型</label>
+            <label class="pill"><input type="checkbox" id="feat_ai_keywords" checked> AI 关键词提取</label>
+            <label class="pill"><input type="checkbox" id="feat_move" checked> 移动</label>
+            <label class="pill"><input type="checkbox" id="feat_rename" checked> 重命名</label>
+            <label class="pill"><input type="checkbox" id="feat_delete" checked> 删除</label>
+            <label class="pill"><input type="checkbox" id="feat_image_caption"> 图像反向提示词</label>
+            <label class="pill"><input type="checkbox" id="feat_video_preview"> 视频预览</label>
+            <label class="pill"><input type="checkbox" id="feat_audio_preview"> 音频预览</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot" style="justify-content:flex-end;">
+        <button class="btn" id="settingsSave">保存设置</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 全局加载层 -->
   <div id="loading" class="loader" aria-hidden="true">
     <div class="spinner hourglass"></div>
@@ -201,75 +277,6 @@
   </div>
 
   <!-- 带版本号避免缓存 -->
-  <script src="/static/app_classic.js?v=20250818d"></script>
-
-<!-- 登录弹窗 -->
-<div id="loginModal" class="confirm-modal" style="display:none;">
-  <div class="confirm-modal-content">
-    <p><strong>管理员登录</strong></p>
-    <div style="margin-top: 10px;">
-      <input id="loginUser" placeholder="用户名" style="margin-bottom:8px;width: 80%;"><br>
-      <input id="loginPass" type="password" placeholder="密码" style="width: 80%;">
-    </div>
-    <div style="margin-top: 20px;">
-      <button class="btn" id="loginConfirm">登录</button>
-      <button class="btn" id="loginCancel">取消</button>
-    </div>
-  </div>
-</div>
-
-<!-- 设置弹窗 -->
-<div id="settingsModal" class="confirm-modal" style="display:none;">
-  <div class="confirm-modal-content" style="text-align:left;max-width:600px;">
-    <p><strong>系统设置</strong></p>
-    <div>
-      <label>界面主题：</label>
-      <label class="pill"><input type="radio" name="theme" value="light"> 亮色调</label>
-      <label class="pill"><input type="radio" name="theme" value="dark"> 暗色调</label>
-      <label class="pill"><input type="radio" name="theme" value="system"> 跟随系统</label>
-    </div>
-    <div style="margin-top:10px;">
-      <label for="aiProvider">AI 选择：</label>
-      <select id="aiProvider">
-        <option value="ollama">Ollama</option>
-        <option value="chatgpt">ChatGPT</option>
-        <option value="deepseek">Deepseek</option>
-      </select>
-      <input id="aiUrl" placeholder="服务 URL" style="width:90%;margin-top:6px;">
-      <input id="aiApiKey" placeholder="API Key" style="width:90%;margin-top:6px;">
-      <select id="aiModel" style="width:90%;margin-top:6px;">
-        <option value="llama3">llama3</option>
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-        <option value="gpt-4">gpt-4</option>
-        <option value="deepseek-chat">deepseek-chat</option>
-      </select>
-    </div>
-    <div style="margin-top:10px;">
-      <p>文件类型开关：</p>
-      <label class="pill"><input type="checkbox" id="feat_text"> 文字类型</label>
-      <label class="pill"><input type="checkbox" id="feat_data"> 数据类型</label>
-      <label class="pill"><input type="checkbox" id="feat_slides"> 简报类型</label>
-      <label class="pill"><input type="checkbox" id="feat_pdf"> PDF 类型</label>
-      <label class="pill"><input type="checkbox" id="feat_archive"> 压缩类型</label>
-      <label class="pill"><input type="checkbox" id="feat_image"> 图片类型</label>
-      <label class="pill"><input type="checkbox" id="feat_video"> 视频类型</label>
-      <label class="pill"><input type="checkbox" id="feat_audio"> 音频类型</label>
-    </div>
-    <div style="margin-top:10px;">
-      <p>操作功能开关：</p>
-      <label class="pill"><input type="checkbox" id="feat_ai_keywords"> AI 提取关键词</label>
-      <label class="pill"><input type="checkbox" id="feat_move"> 移动文件</label>
-      <label class="pill"><input type="checkbox" id="feat_rename"> 重命名</label>
-      <label class="pill"><input type="checkbox" id="feat_delete"> 删除文件</label>
-      <label class="pill"><input type="checkbox" id="feat_image_caption"> 图像反向提示词</label>
-      <label class="pill"><input type="checkbox" id="feat_video_preview"> 视频预览</label>
-      <label class="pill"><input type="checkbox" id="feat_audio_preview"> 音频预览</label>
-    </div>
-    <div style="margin-top:20px;text-align:center;">
-      <button class="btn" id="settingsSave">保存</button>
-      <button class="btn" id="settingsClose">关闭</button>
-    </div>
-  </div>
-</div>
+  <script src="/static/app_classic.js?v=20250820b"></script>
 </body>
 </html>
