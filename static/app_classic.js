@@ -283,7 +283,8 @@
       tr.style.display = ok ? '' : 'none';
     });
     const visible = rows.filter(tr=>tr.style.display!=='none').length;
-    $("#pageinfo")?.textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`;
+    const pageInfoEl = $("#pageinfo");
+    if(pageInfoEl){ pageInfoEl.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`; }
   }
 
   async function openSettings(){
@@ -589,6 +590,10 @@
       console.warn('读取设置失败：', e);
       applyFeatureToggles({});
     }
+
+    // 初始化文件类型下拉框并在类别变化时动态更新
+    fillTypes();
+    document.getElementById('category')?.addEventListener('change', fillTypes);
 
     const ut = document.getElementById('userTools');
     if (ut) {
