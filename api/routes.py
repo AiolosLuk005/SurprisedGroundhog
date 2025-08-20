@@ -342,7 +342,11 @@ def logout():
 # -------------------- 设置 --------------------
 @bp.get("/settings")
 def get_settings():
-    return jsonify(SETTINGS)
+    out = dict(SETTINGS)
+    if "user" in session:
+        out["user"] = session.get("user")
+        out["level"] = session.get("level")
+    return jsonify(out)
 
 @bp.post("/settings")
 def update_settings_route():
