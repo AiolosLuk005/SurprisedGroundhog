@@ -542,6 +542,35 @@
   }
 
   // ---- bind ----
+  document.addEventListener('DOMContentLoaded', async () => {
+    let settings = {};
+    try {
+      const res = await fetch('/full/settings');
+      settings = await res.json();
+      applyFeatureToggles(settings);
+    } catch (e) {
+      console.warn('读取设置失败：', e);
+      applyFeatureToggles({});
+    }
+
+    const ut = document.getElementById('userTools');
+    if (ut) {
+      if (settings.user) {
+        ut.innerHTML = `<button class="btn btn-sm" id="settingsBtn">设置</button><button class="btn btn-sm" id="logoutBtn">退出 (${settings.user})</button>`;
+        document.getElementById('logoutBtn').onclick = async () => {
+          await fetch('/full/logout');
+          location.reload();
+        };
+      } else {
+        ut.innerHTML = `<button class="btn btn-sm" id="settingsBtn">设置</button><button class="btn btn-sm" id="loginBtn">登录</button>`;
+        document.getElementById('loginBtn').onclick = () => {
+          document.getElementById('loginModal').style.display = 'flex';
+        };
+      }
+      document.getElementById('settingsBtn').onclick = openSettings;
+    }
+
+    document.getElementById('loginConfirm')?.addEventListener('click', async () => {
       const username = document.getElementById('loginUser').value.trim();
       const password = document.getElementById('loginPass').value.trim();
       const res = await fetch('/full/login', {
@@ -559,5 +588,8 @@
       }
     });
 
+    document.getElementById('loginCancel')?.addEventListener('click', () => {
+      document.getElementById('loginModal').style.display = 'none';
+    });
   });
 })();
