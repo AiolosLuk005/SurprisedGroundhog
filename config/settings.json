@@ -15,6 +15,12 @@
   "features": {
     "enable_text": true,
     "enable_data": true,
+    "enable_slides": true,
+    "enable_pdf": true,
+    "enable_archive": true,
+    "enable_image": true,
+    "enable_video": true,
+    "enable_audio": true,
     "enable_image_caption": false,
     "enable_video_preview": false,
     "enable_audio_preview": false,

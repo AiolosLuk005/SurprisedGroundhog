@@ -1,4 +1,4 @@
-// Classic UI fix 20250820a: batch ops + confirms + preview + pagination + login/settings
+// Classic UI fix 20250820b: batch ops + confirms + preview + pagination + login/settings
 (function(){
   const TYPES={
     TEXT:["docx","doc","txt","md","rtf"],
@@ -11,9 +11,9 @@
     AUDIO:["mp3","wav","m4a","flac"]
   };
 
-  const $=s=>document.querySelector(s);
-  const $$=s=>Array.from(document.querySelectorAll(s));
-  const qs=v=>encodeURIComponent(v||"");
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const qs = v => encodeURIComponent(v||"");
 
   function toggleLoading(on, msg){
     const el = $("#loading");
@@ -171,8 +171,8 @@
   // ---- core actions ----
   async function loadPage(page){
     if(!lastQuery) return;
-    const {dir,recur,pageSize,exts,cat,q}=lastQuery;
-    const params=`dir=${qs(dir)}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
+    const {dir,recur,pageSize,exts,cat,q,withHash}=lastQuery;
+    const params=`dir=${qs(dir)}&hash=${withHash||0}&recursive=${recur}&page=${page}&page_size=${pageSize}&category=${qs(cat)}&types=${qs(exts)}&q=${qs(q)}`;
     const candidates=PATHS.scan.map(b=>`${b}?${params}`);
 
     toggleLoading(true, "正在扫描文件…");
@@ -199,6 +199,7 @@
 
     const selected=exts?exts.split(","):[];
     renderRows(j, selected);
+    applyKwFilter(); // 若有关键词过滤输入，则更新可见行
 
     // 页码与统计信息
     currentPage=page;
@@ -222,7 +223,8 @@
       pageSize:Number($("#page_size")?.value||500)||500,
       exts:Array.from($("#types")?.selectedOptions||[]).map(o=>o.value.toLowerCase()).join(","),
       cat:$("#category")?.value||"",
-      q:$("#q")?.value||""
+      q:$("#q")?.value||"",
+      withHash:$("#hash")?.checked?1:0
     };
     await loadPage(1);
   }
@@ -255,6 +257,110 @@
     });
   }
 
+  // 关键词过滤（表内实时筛选）
+  function applyKwFilter(){
+    const kw = $("#kwFilter")?.value?.trim() || "";
+    const terms = kw ? kw.split(/\s+/).filter(Boolean) : [];
+    const rows = $$("#tbl tbody tr");
+    if(!rows.length) return;
+    if(!terms.length){
+      rows.forEach(tr=>tr.style.display="");
+    }else{
+      rows.forEach(tr=>{
+        const text = tr.querySelector('.kw')?.textContent || "";
+        const ok = terms.every(t=>text.includes(t));
+        tr.style.display = ok ? '' : 'none';
+      });
+    }
+    const visible = rows.filter(tr=>tr.style.display!=='none').length;
+    if($("#pageinfo")) $("#pageinfo").textContent=`第 ${currentPage} 页 / 共 ${totalPages} 页 · 本页 ${visible} 项`;
+  }
+
+  // 设置弹窗：拉取/渲染
+  async function openSettings(){
+    try{
+      const res = await fetch('/full/settings');
+      const s = await res.json();
+      if(s.theme){ $$('input[name="theme"]').forEach(r=>r.checked=(r.value===s.theme)); }
+      if($('#aiProvider')) $('#aiProvider').value = s.ai?.provider || 'ollama';
+      if($('#apiKey')) $('#apiKey').value = s.ai?.api_key || '';
+
+      const f = s.features || {};
+      const map = {
+        feat_text: 'enable_text',
+        feat_data: 'enable_data',
+        feat_slides: 'enable_slides',
+        feat_pdf: 'enable_pdf',
+        feat_archive: 'enable_archive',
+        feat_image: 'enable_image',
+        feat_video: 'enable_video',
+        feat_audio: 'enable_audio',
+        feat_ai_keywords: 'enable_ai_keywords',
+        feat_move: 'enable_move',
+        feat_rename: 'enable_rename',
+        feat_delete: 'enable_delete',
+        feat_image_caption: 'enable_image_caption',
+        feat_video_preview: 'enable_video_preview',
+        feat_audio_preview: 'enable_audio_preview'
+      };
+      Object.entries(map).forEach(([id,key])=>{
+        const el = $('#'+id);
+        if(el) el.checked = !!f[key];
+      });
+    }catch(e){
+      console.warn('读取设置失败：', e);
+    }
+    if($('#settingsModal')) $('#settingsModal').style.display='flex';
+  }
+
+  // 设置弹窗：保存
+  async function saveSettings(){
+    const payload={
+      theme: ($$('input[name="theme"]:checked')[0]?.value)||'system',
+      ai:{
+        provider: $('#aiProvider')?.value || 'ollama',
+        api_key: $('#apiKey')?.value?.trim() || ''
+      },
+      features:{
+        enable_text: !!$('#feat_text')?.checked,
+        enable_data: !!$('#feat_data')?.checked,
+        enable_slides: !!$('#feat_slides')?.checked,
+        enable_pdf: !!$('#feat_pdf')?.checked,
+        enable_archive: !!$('#feat_archive')?.checked,
+        enable_image: !!$('#feat_image')?.checked,
+        enable_video: !!$('#feat_video')?.checked,
+        enable_audio: !!$('#feat_audio')?.checked,
+        enable_ai_keywords: !!$('#feat_ai_keywords')?.checked,
+        enable_move: !!$('#feat_move')?.checked,
+        enable_rename: !!$('#feat_rename')?.checked,
+        enable_delete: !!$('#feat_delete')?.checked,
+        enable_image_caption: !!$('#feat_image_caption')?.checked,
+        enable_video_preview: !!$('#feat_video_preview')?.checked,
+        enable_audio_preview: !!$('#feat_audio_preview')?.checked
+      }
+    };
+    try{
+      await fetch('/full/settings', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      alert('已保存');
+    }catch(e){
+      alert('保存失败：'+e.message);
+    }
+    if($('#settingsModal')) $('#settingsModal').style.display='none';
+  }
+
+  // 导出 CSV
+  function onExport(){
+    if(!lastQuery){ customConfirm('请先扫描').then(()=>{}); return; }
+    const {dir,withHash,recur,cat,exts}=lastQuery;
+    const url=`${PATHS.exportCSV[0]}?dir=${qs(dir)}&hash=${withHash||0}&recursive=${recur}&category=${qs(cat)}&types=${qs(exts)}`;
+    window.open(url,'_blank');
+  }
+
+  // ---- batch ops / keywords / clear ----
   async function onApplyOps(action) {
     const selectedRows = $$('#tbl tbody .ck:checked');
     if (selectedRows.length === 0) { customConfirm("请选择要操作的文件。").then(() => {}); return; }
@@ -269,14 +375,14 @@
       confirmMessage = `确认移动 ${selectedRows.length} 个文件吗？`;
       selectedRows.forEach(cb => {
         const row = cb.closest('tr');
-        const dst = row.querySelector('.mv').value.trim();
+        const dst = row.querySelector('.mv')?.value.trim();
         if (dst) ops.push({ action: 'move', src: cb.dataset.path, dst });
       });
     } else if (action === 'rename') {
       confirmMessage = `确认重命名 ${selectedRows.length} 个文件吗？`;
       selectedRows.forEach(cb => {
         const row = cb.closest('tr');
-        const newName = row.querySelector('.rn').value.trim();
+        const newName = row.querySelector('.rn')?.value.trim();
         if (newName) ops.push({ action: 'rename', src: cb.dataset.path, new_name: newName });
       });
     }
@@ -303,12 +409,13 @@
     const selectedRows = $$('#tbl tbody .ck:checked');
     if (selectedRows.length === 0) { customConfirm("请选择要提取关键词的文件。").then(() => {}); return; }
     const paths = selectedRows.map(cb => cb.dataset.path);
+    const maxLen = Math.min(200, Math.max(1, Number($("#kw_len")?.value||50)));
 
     toggleLoading(true, "正在提取关键词…");
     const res = await firstOK(PATHS.kw, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths })
+      body: JSON.stringify({ paths, max_len: maxLen })
     });
     toggleLoading(false);
 
@@ -379,6 +486,11 @@
     $("#prev")?.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
     $("#next")?.addEventListener("click", ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
 
+    // 导出 & 关键词过滤控件（如存在）
+    $("#exportBtn")?.addEventListener("click", onExport);
+    $("#kwFilterBtn")?.addEventListener("click", applyKwFilter);
+    $("#kwFilter")?.addEventListener("input", (e)=>{ if(!e.target.value) applyKwFilter(); });
+
     // 批量操作
     $("#applyMoveBtn")?.addEventListener("click", () => onApplyOps('move'));
     $("#applyRenameBtn")?.addEventListener("click", () => onApplyOps('rename'));
@@ -400,9 +512,7 @@
     settingsBtn.textContent = '⚙️ 设置';
     settingsBtn.className = 'btn btn-sm';
     settingsBtn.style.marginLeft = '12px';
-    settingsBtn.onclick = () => {
-      document.getElementById('settingsModal').style.display = 'flex';
-    };
+    settingsBtn.onclick = openSettings;
     topbar?.appendChild(settingsBtn);
 
     const user=document.body.dataset.user;
@@ -430,6 +540,7 @@
     document.getElementById('settingsClose')?.addEventListener('click', () => {
       document.getElementById('settingsModal').style.display = 'none';
     });
+    document.getElementById('settingsSave')?.addEventListener('click', saveSettings);
 
     document.getElementById('loginConfirm')?.addEventListener('click', async () => {
       const username = document.getElementById('loginUser').value.trim();

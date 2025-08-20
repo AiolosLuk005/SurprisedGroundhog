@@ -12,7 +12,7 @@ from core.ollama import call_ollama_keywords
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
 from flask import session
-from core.settings import SETTINGS
+from core.settings import SETTINGS, save_settings
 
 bp = Blueprint("full_api", __name__)
 
@@ -207,7 +207,10 @@ def clear_keywords():
 @bp.post("/keywords")
 def gen_keywords():
     data = request.get_json(silent=True) or {}
-    paths, seeds = data.get("paths", []), (data.get("seeds") or "").strip()
+    paths = data.get("paths", [])
+    seeds = (data.get("seeds") or "").strip()
+    max_len = int(data.get("max_len", 50))
+    max_len = max(1, min(200, max_len))
     out = {}
     STATE.setdefault("keywords", {})
 
@@ -216,16 +219,15 @@ def gen_keywords():
             continue
         title = Path(p).name
         ext = Path(p).suffix.lower().lstrip(".")
-        cat = _detect_category_local(ext)  # ← 使用本地分类，已包含 ARCHIVE
+        cat = _detect_category_local(ext)
 
-        if cat in ("TEXT","DATA","PDF","SLIDES","ARCHIVE"):
-            # ARCHIVE（zip/rar/7z）在 extract_text_for_keywords 里已支持摘要抽取
+        if cat in ("TEXT", "DATA", "PDF", "SLIDES", "ARCHIVE"):
             body = extract_text_for_keywords(p, max_chars=3000)
-            kw = call_ollama_keywords(title, body, max_total_chars=50, seeds=seeds) or ""
+            kw = call_ollama_keywords(title, body, max_total_chars=max_len, seeds=seeds) or ""
             if not kw:
-                base = Path(p).stem.replace("_"," ").replace("-"," ")
+                base = Path(p).stem.replace("_", " ").replace("-", " ")
                 prefix = (seeds + ", ") if seeds else ""
-                kw = prefix + base[:max(0, 50 - len(prefix))]
+                kw = prefix + base[:max(0, max_len - len(prefix))]
         elif cat == "IMAGE":
             kw = "图片关键词提取功能待实现"
         elif cat == "AUDIO":
@@ -233,9 +235,9 @@ def gen_keywords():
         else:
             base = Path(p).stem
             prefix = (seeds + ", ") if seeds else ""
-            kw = prefix + base[:max(0, 50 - len(prefix))]
+            kw = prefix + base[:max(0, max_len - len(prefix))]
 
-        kw = kw[:50]
+        kw = kw[:max_len]
         out[p] = kw
         STATE["keywords"][p] = kw
 
@@ -325,4 +327,18 @@ def login():
 @bp.get("/logout")
 def logout():
     session.clear()
+    return jsonify({"ok": True})
+
+# -------------------- 设置 --------------------
+@bp.get("/settings")
+def get_settings():
+    return jsonify(SETTINGS)
+
+@bp.post("/settings")
+def update_settings_route():
+    data = request.get_json(silent=True) or {}
+    for key in ("theme", "ai", "features"):
+        if key in data:
+            SETTINGS[key] = data[key]
+    save_settings(SETTINGS)
     return jsonify({"ok": True})
