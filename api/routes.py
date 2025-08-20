@@ -56,9 +56,10 @@ def index_page():
     return render_template(
         "full.html",
         allowed_roots=ALLOWED_ROOTS,
-        default_dir=DEFAULT_SCAN_DIR,
+        default_dir="",
         enable_hash_default=ENABLE_HASH_DEFAULT,
-        page_size_default=PAGE_SIZE_DEFAULT
+        page_size_default=PAGE_SIZE_DEFAULT,
+        current_user=session.get("user")
     )
 
 @bp.get("/ls")

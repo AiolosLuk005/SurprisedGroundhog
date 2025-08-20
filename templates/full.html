@@ -65,7 +65,7 @@
   .preview-content img, .preview-content video { max-width: 100%; height: auto; }
   </style>
 </head>
-<body>
+<body data-user="{{ current_user or '' }}">
   <div class="topbar">
     <h2 class="brand">Surprised Groundhog · V1.01</h2>
     <img class="logo" src="/static/logo.png" alt="logo">
