@@ -2,6 +2,7 @@
 import os
 from urllib.parse import urlencode
 from flask import Flask, request, abort, redirect, jsonify, session
+from core.settings import SETTINGS
 
 # 你的蓝图（保持现有路径）
 from api.ai import bp as ai_bp            # /api/ai/*
@@ -30,6 +31,11 @@ def _redirect_with_args(target_path: str, params: dict | None):
 
 def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates", static_folder="static")
+    app.secret_key = (
+        SETTINGS.get("auth", {}).get("secret_key")
+        or os.environ.get("SECRET_KEY")
+        or "groundhog-secret"
+    )
 
     # --------------------------- Blueprint Registration ---------------------------
     # /api/ai/* 直接保留
