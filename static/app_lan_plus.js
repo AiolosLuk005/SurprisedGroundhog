@@ -149,10 +149,21 @@ el("btnGenKW").onclick=async()=>{
     if(row) row.querySelector(".kw").textContent = "⏳ 生成中...";
     try{
       const sample = await readTextSample(r.file);
-      const payload = { text: (r.name + "\n" + sample).slice(0, 4000), seeds, max_len: 50 };
-      const resp = await fetch("/api/ai/keywords",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
-      if(!resp.ok) throw new Error("HTTP "+resp.status);
-      const data = await resp.json();
+      let data;
+      if(sample){
+        const payload = { text: (r.name + "\n" + sample).slice(0, 4000), seeds, max_len: 50 };
+        const resp = await fetch("/api/ai/keywords",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+        if(!resp.ok) throw new Error("HTTP "+resp.status);
+        data = await resp.json();
+      }else{
+        const form = new FormData();
+        form.append("file", r.file, r.name);
+        form.append("seeds", seeds);
+        form.append("max_len", "50");
+        const resp = await fetch("/api/ai/keywords_file",{ method:"POST", body: form });
+        if(!resp.ok) throw new Error("HTTP "+resp.status);
+        data = await resp.json();
+      }
       if(!data.ok) throw new Error(data.err||"AI 生成失败");
       r.kw = data.keywords || "";
       ok++;

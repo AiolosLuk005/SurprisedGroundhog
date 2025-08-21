@@ -527,10 +527,6 @@
     const tbody=$('#tbl tbody');
     if(tbody) tbody.addEventListener('click', onPreview);
 
-    // 固定按钮绑定（HTML 已包含时直接绑定）
-    bind('#settingsBtn','click', openSettings);
-    bind('#loginBtn','click', ()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); });
-
     // 顶部工具区：若未在 HTML 放固定按钮，这里兜底加入“设置/登录”
     const topbar = document.querySelector('.topbar');
     if(topbar && !$('#settingsBtn')){
@@ -539,7 +535,7 @@
       settingsBtn.textContent='⚙️ 设置';
       settingsBtn.className='btn btn-sm';
       settingsBtn.style.marginLeft='12px';
-      settingsBtn.onclick=openSettings;
+      settingsBtn.addEventListener('click', openSettings);
       topbar.appendChild(settingsBtn);
     }
 
@@ -558,7 +554,7 @@
         logoutBtn.textContent='退出';
         logoutBtn.className='btn btn-sm';
         logoutBtn.style.marginLeft='8px';
-        logoutBtn.onclick=async()=>{ await fetch('/full/logout',{credentials:'include'}); location.reload(); };
+        logoutBtn.addEventListener('click', async()=>{ await fetch('/full/logout',{credentials:'include'}); location.reload(); });
         topbar.appendChild(logoutBtn);
       }else{
         const loginBtn=document.createElement('button');
@@ -566,10 +562,12 @@
         loginBtn.textContent='🔐 登录';
         loginBtn.className='btn btn-sm';
         loginBtn.style.marginLeft='12px';
-        loginBtn.onclick=()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); };
+        loginBtn.addEventListener('click', ()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); });
         topbar.appendChild(loginBtn);
       }
     }
+
+    initUserBtns();
 
     // 登录弹窗按钮
     bind('#loginConfirm','click', async ()=>{
