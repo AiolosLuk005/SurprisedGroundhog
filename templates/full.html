@@ -152,7 +152,23 @@
         <th>预览</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody>
+      {% for r in rows or [] %}
+      <tr>
+        <td><input type="checkbox" class="ck" data-path="{{ r.full_path }}"></td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.dir_path }}</td>
+        <td>{{ r.ext }}</td>
+        <td>{{ r.category }}</td>
+        <td>{{ (r.size_bytes // 1024) if r.size_bytes is not none else '' }}</td>
+        <td>{{ r.mtime_iso }}</td>
+        <td class="kw">{{ r.keywords }}</td>
+        <td><input class="mv" placeholder="目标目录" disabled></td>
+        <td><input class="rn" placeholder="新文件名" disabled></td>
+        <td><button class="btn btn-sm pv" data-path="{{ r.full_path }}" data-ext="{{ r.ext }}" data-cat="{{ r.category }}">预览</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
 
   <div class="row">
