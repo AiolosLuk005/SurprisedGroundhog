@@ -103,10 +103,23 @@
     <button class="btn" id="applyDeleteBtn">批量删除</button>
   </div>
 
-  <table id="tbl">
+  <table id="tbl" class="fixed-table">
+    <colgroup>
+      <col class="col-select">
+      <col class="col-name">
+      <col class="col-path">
+      <col class="col-ext">
+      <col class="col-category">
+      <col class="col-size">
+      <col class="col-mtime">
+      <col class="col-keywords">
+      <col class="col-move">
+      <col class="col-rename">
+      <col class="col-preview">
+    </colgroup>
     <thead>
       <tr>
-        <th style="width:42px;">选</th>
+        <th>选</th>
         <th>文件名</th>
         <th>完整路径</th>
         <th>扩展名</th>
