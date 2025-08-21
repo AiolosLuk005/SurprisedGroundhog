@@ -527,15 +527,6 @@
     const tbody=$('#tbl tbody');
     if(tbody) tbody.addEventListener('click', onPreview);
 
-    // 固定按钮绑定（HTML 已包含时直接绑定）
-    const initUserBtns=()=>{
-      const s=document.getElementById('settingsBtn');
-      if(s && !s.dataset.bound){ s.dataset.bound='1'; s.addEventListener('click', openSettings); }
-      const l=document.getElementById('loginBtn');
-      if(l && !l.dataset.bound){ l.dataset.bound='1'; l.addEventListener('click', ()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); }); }
-    };
-    initUserBtns();
-
     // 顶部工具区：若未在 HTML 放固定按钮，这里兜底加入“设置/登录”
     const topbar = document.querySelector('.topbar');
     if(topbar && !$('#settingsBtn')){
