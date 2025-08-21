@@ -488,7 +488,7 @@
   }
 
   // ---- boot ----
-  document.addEventListener('DOMContentLoaded', async ()=>{
+  async function boot(){
     // 读取设置并应用特性开关（影响分类下拉可用项等）
     try{
       const res=await fetch('/full/settings',{credentials:'include'});
@@ -584,5 +584,11 @@
     bind('#settingsSave','click', saveSettings);
     bind('#settingsClose','click', ()=>{ $('#settingsModal') && ($('#settingsModal').style.display='none'); });
     bind('#settingsCancel','click', ()=>{ $('#settingsModal') && ($('#settingsModal').style.display='none'); });
-  });
+  }
+
+  if(document.readyState!=='loading'){
+    boot();
+  }else{
+    document.addEventListener('DOMContentLoaded', boot);
+  }
 })();
