@@ -1,11 +1,23 @@
 import json, urllib.request
+from urllib.parse import urljoin
 from core.config import OLLAMA
+from core.settings import SETTINGS
 
 def call_ollama_keywords(title: str, body: str, max_total_chars: int = 50, seeds: str | None = None) -> str | None:
-    if not OLLAMA.get("enable"):
+    ai_cfg = SETTINGS.get("ai", {}) if isinstance(SETTINGS, dict) else {}
+    provider = ai_cfg.get("provider") or "ollama"
+    if provider not in ("ollama", ""):
         return None
-    model = OLLAMA.get("model", "qwen2.5:latest")
-    timeout = int(OLLAMA.get("timeout_sec", 30))
+    enable = ai_cfg.get("enable")
+    if enable is not None:
+        if not enable:
+            return None
+    elif not OLLAMA.get("enable"):
+        return None
+
+    model = ai_cfg.get("model") or OLLAMA.get("model", "llama3.1:latest")
+    timeout = int(ai_cfg.get("timeout_sec") or OLLAMA.get("timeout_sec", 30))
+    base_url = ai_cfg.get("url") or OLLAMA.get("url") or "http://127.0.0.1:11434"
     seeds = (seeds or "").strip()
 
     prompt = (
@@ -19,7 +31,8 @@ def call_ollama_keywords(title: str, body: str, max_total_chars: int = 50, seeds
     ).replace("{max_len}", str(max_total_chars))
 
     data = json.dumps({"model": model, "prompt": prompt, "stream": False}).encode("utf-8")
-    req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=data, headers={"Content-Type":"application/json"})
+    api_url = urljoin(base_url.rstrip('/')+'/', 'api/generate')
+    req = urllib.request.Request(api_url, data=data, headers={"Content-Type":"application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             x = json.loads(resp.read().decode("utf-8"))

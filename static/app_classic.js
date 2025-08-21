@@ -247,7 +247,14 @@
       modelSel.innerHTML='';
       let models=[];
       if(p==='ollama'){
-        try{ const r=await fetch('/api/ai/ollama/models',{credentials:'include'}); const j=await r.json(); models=j.models||[]; }catch(e){ models=[]; }
+        try{
+          const r=await fetch('/api/ai/ollama/models',{credentials:'include'});
+          const j=await r.json();
+          models=j.models||[];
+        }catch(e){ models=[]; }
+        if(models.length===0){
+          models=['gpt-oss:20b','deepseek-r1:14b','llama3.1:latest'];
+        }
       }else if(p==='chatgpt'){
         models=['gpt-3.5-turbo','gpt-4','gpt-4o'];
       }else if(p==='deepseek'){
@@ -520,6 +527,15 @@
     const tbody=$('#tbl tbody');
     if(tbody) tbody.addEventListener('click', onPreview);
 
+    // 固定按钮绑定（HTML 已包含时直接绑定）
+    const initUserBtns=()=>{
+      const s=document.getElementById('settingsBtn');
+      if(s && !s.dataset.bound){ s.dataset.bound='1'; s.addEventListener('click', openSettings); }
+      const l=document.getElementById('loginBtn');
+      if(l && !l.dataset.bound){ l.dataset.bound='1'; l.addEventListener('click', ()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); }); }
+    };
+    initUserBtns();
+
     // 顶部工具区：若未在 HTML 放固定按钮，这里兜底加入“设置/登录”
     const topbar = document.querySelector('.topbar');
     if(topbar && !$('#settingsBtn')){
@@ -528,7 +544,7 @@
       settingsBtn.textContent='⚙️ 设置';
       settingsBtn.className='btn btn-sm';
       settingsBtn.style.marginLeft='12px';
-      settingsBtn.onclick=openSettings;
+      settingsBtn.addEventListener('click', openSettings);
       topbar.appendChild(settingsBtn);
     }
 
@@ -547,7 +563,7 @@
         logoutBtn.textContent='退出';
         logoutBtn.className='btn btn-sm';
         logoutBtn.style.marginLeft='8px';
-        logoutBtn.onclick=async()=>{ await fetch('/full/logout',{credentials:'include'}); location.reload(); };
+        logoutBtn.addEventListener('click', async()=>{ await fetch('/full/logout',{credentials:'include'}); location.reload(); });
         topbar.appendChild(logoutBtn);
       }else{
         const loginBtn=document.createElement('button');
@@ -555,10 +571,12 @@
         loginBtn.textContent='🔐 登录';
         loginBtn.className='btn btn-sm';
         loginBtn.style.marginLeft='12px';
-        loginBtn.onclick=()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); };
+        loginBtn.addEventListener('click', ()=>{ $('#loginModal') && ($('#loginModal').style.display='flex'); });
         topbar.appendChild(loginBtn);
       }
     }
+
+    initUserBtns();
 
     // 登录弹窗按钮
     bind('#loginConfirm','click', async ()=>{

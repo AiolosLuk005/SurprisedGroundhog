@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from core.ollama import call_ollama_keywords
-import json, urllib.request
+from core.extractors import extract_text_for_keywords
+import json, urllib.request, tempfile, os
+from pathlib import Path
 from core.settings import SETTINGS
 
 bp = Blueprint("ai", __name__, url_prefix="/api/ai")
@@ -40,3 +42,31 @@ def keywords():
         remain = max_len - len(prefix)
         out = (prefix + text.replace("\n"," ")[:max(0, remain)]).strip(", ")
     return jsonify({"ok": True, "keywords": out})
+
+@bp.post("/keywords_file")
+def keywords_file():
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"ok": False, "error": "file required"}), 400
+    seeds = (request.form.get("seeds") or "").strip()
+    max_len = int(request.form.get("max_len", 50))
+    max_len = max(1, min(200, max_len))
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp_path = tmp.name
+            f.save(tmp)
+        body = extract_text_for_keywords(tmp_path, max_chars=3000)
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+    title = f.filename or ""
+    kw = call_ollama_keywords(title, body, max_total_chars=max_len, seeds=seeds) or ""
+    if not kw:
+        base = Path(title).stem.replace("_", " ").replace("-", " ")
+        prefix = (seeds + ", ") if seeds else ""
+        kw = prefix + base[:max(0, max_len - len(prefix))]
+    return jsonify({"ok": True, "keywords": kw[:max_len]})

@@ -25,11 +25,25 @@ from core.plugin_base import ExtractorPlugin
 _PLUGINS_READY = False
 
 def _ensure_plugins() -> None:
-    """首次调用时发现并加载插件；重复调用无副作用。"""
+    """首次调用时发现并加载插件；重复调用无副作用。
+
+    如果自动发现后仍未注册任何插件，则尝试直接导入内置基础插件，
+    避免因为路径或打包问题导致提取逻辑缺失。
+    """
     global _PLUGINS_READY
     if not _PLUGINS_READY:
         try:
             discover_plugins()
+            if not get_plugins():
+                try:  # 手动导入内置插件
+                    import plugins.text_basic  # noqa: F401
+                    import plugins.pdf_basic  # noqa: F401
+                    import plugins.docx_basic  # noqa: F401
+                    import plugins.excel_basic  # noqa: F401
+                    import plugins.ppt_basic  # noqa: F401
+                    import plugins.archive_keywords  # noqa: F401
+                except Exception:
+                    pass
         finally:
             _PLUGINS_READY = True
 
