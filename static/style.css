@@ -28,3 +28,16 @@ th,td{border-bottom:1px solid #eee;padding:8px;text-align:left}
 .small{font-size:12px;color:#666}
 .feature-grid{display:flex;gap:20px}
 .feature-grid>div{flex:1}
+.fixed-table{table-layout:fixed;width:100%}
+.fixed-table th,.fixed-table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col-select{width:42px}
+.col-name{width:220px}
+.col-path{width:320px}
+.col-ext{width:90px}
+.col-category{width:120px}
+.col-size{width:100px}
+.col-mtime{width:180px}
+.col-keywords{width:240px}
+.col-move{width:160px}
+.col-rename{width:160px}
+.col-preview{width:80px}
