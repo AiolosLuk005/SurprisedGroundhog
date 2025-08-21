@@ -1,26 +1,27 @@
-from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory, abort, current_app
+from flask import Blueprint, render_template, request, jsonify, send_file, send_from_directory, abort, current_app, session
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-import os, io, csv, shutil
+import os, io, csv, shutil, json, re, textwrap, math
+import requests
 from PIL import Image
 from send2trash import send2trash
+
 from core.config import ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT, MYSQL_ENABLED, TRASH_DIR
-from core.utils.iterfiles import is_under_allowed_roots, iter_files  # 依然复用你的核心扫描逻辑
+from core.utils.iterfiles import is_under_allowed_roots, iter_files  # 复用扫描逻辑
 from core.extractors import extract_text_for_keywords
-from core.ollama import call_ollama_keywords
+# 原有轻量关键词调用仍保留（作为兜底），但我们优先使用本文件的新 Map-Reduce
+# from core.ollama import call_ollama_keywords
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
-from flask import session
 from core.settings import SETTINGS, save_settings
 
 bp = Blueprint("full_api", __name__)
 
 # -------------------- 本地分类（含 zip/rar/7z ） --------------------
-# 仅用于关键词分支判断，保证不依赖外部 detect_category 也能识别 ARCHIVE
 CATEGORIES_LOCAL = {
-    "TEXT":   {"docx","doc","txt","md"},
-    "DATA":   {"xlsx","xlsm","xls","csv","xml"},
+    "TEXT":   {"docx","doc","txt","md","rtf"},
+    "DATA":   {"xlsx","xlsm","xls","csv","tsv","xml","parquet"},
     "SLIDES": {"pptx","ppt"},
     "ARCHIVE":{"zip","rar","7z"},
     "PDF":    {"pdf"},
@@ -121,7 +122,7 @@ def export_csv():
         writer.writeheader()
         for row in iter_files(scan_dir, with_hash, category, types, recursive):
             d = asdict(row)
-            d.pop("previewable", None)  # 防止 DictWriter 报错
+            d.pop("previewable", None)
             writer.writerow({k: d.get(k) for k in fieldnames})
 
     return send_file(str(filepath), as_attachment=True, download_name=filename, mimetype="text/csv")
@@ -176,7 +177,159 @@ def import_mysql():
     cur.close(); conn.close()
     return jsonify({"ok": True, "inserted": count})
 
-# -------------------- 关键词管理 --------------------
+# -------------------- 关键词管理（本地 Ollama Map-Reduce 增强） --------------------
+
+# —— 工具：调用 Ollama generate API（仅本地 provider=ollama）
+def _ollama_generate(prompt: str) -> str:
+    ai = SETTINGS.get("ai", {}) or {}
+    if ai.get("provider") != "ollama":
+        raise RuntimeError("当前仅实现 provider=ollama 的关键词提取")
+    url = (ai.get("url") or "http://localhost:11434").rstrip("/")
+    model = ai.get("model") or "qwen2:7b"
+    options = {
+        "num_ctx": int(ai.get("num_ctx", 8192)),
+        "temperature": float(ai.get("temperature", 0.3)),
+        "top_p": float(ai.get("top_p", 0.9)),
+        "repeat_penalty": float(ai.get("repeat_penalty", 1.1))
+    }
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "options": options,
+        "stream": False
+    }
+    resp = requests.post(f"{url}/api/generate", json=payload, timeout=int(ai.get("timeout_sec", 60)))
+    resp.raise_for_status()
+    data = resp.json()
+    # Ollama 返回 {"response":"..."}；我们统一取 response
+    return data.get("response", "")
+
+def _json_from_text(text: str):
+    # 严格尝试 json 解析；若失败，尽力用正则提取第一个 {...} 块
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+    m = re.search(r"\{[\s\S]*\}", text)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            return None
+    return None
+
+def _split_text(s: str, chunk_chars: int):
+    s = s or ""
+    chunk_chars = max(500, int(chunk_chars or 2000))
+    # 尽量按换行断；否则硬切
+    out, buf = [], []
+    acc = 0
+    for line in s.splitlines():
+        L = len(line) + 1
+        if acc + L > chunk_chars and acc > 0:
+            out.append("\n".join(buf))
+            buf, acc = [line], L
+        else:
+            buf.append(line); acc += L
+    if buf:
+        out.append("\n".join(buf))
+    # 防止大段无换行：二次硬切
+    final = []
+    for seg in out:
+        if len(seg) <= chunk_chars:
+            final.append(seg); continue
+        for i in range(0, len(seg), chunk_chars):
+            final.append(seg[i:i+chunk_chars])
+    return final
+
+def _doc_type_hints(doc_type: str) -> str:
+    dt = (doc_type or "TEXT").upper()
+    if dt == "DATA":
+        return "若出现表头/字段名/单位/指标（如MAU、ARPU、转化率），将其视作术语或实体；结合显著的数值变化提取关键词。"
+    if dt == "SLIDES":
+        return "标题与要点（bullet points）权重更高；忽略页脚模板、版权、页码。"
+    if dt == "PDF":
+        return "若文本带有分栏/页眉页脚/参考文献，请忽略这些噪声；优先正文与图表标题。"
+    if dt in ("AUDIO","VIDEO"):
+        return "去除口头语、寒暄；保留人名/组织名/关键决策/行动项（含动词短语）。"
+    return "优先考虑标题/小标题/结论段/列表项中的名词短语；避免空词。"
+
+def _map_reduce_keywords(title: str, body: str, doc_type: str, seeds: str = "", max_len: int = 50) -> dict:
+    ai = SETTINGS.get("ai", {}) or {}
+    prompts = SETTINGS.get("prompts", {}) or {}
+    language = ai.get("language", "zh")
+    chunk_chars = int(ai.get("map_chunk_chars", 2000))
+    top_n = int(ai.get("reduce_top_n", 16))
+    top_pn = int(ai.get("reduce_top_pn", 8))
+
+    if not body:
+        return {"title": title, "language": language, "keywords": [], "keyphrases": [], "summary": ""}
+
+    chunks = _split_text(body, chunk_chars)
+    map_prompt_tpl = prompts.get("map") or "Extract keywords as JSON from:\n\"\"\"\n{{chunk_text}}\n\"\"\""
+    map_results = []
+
+    for idx, ck in enumerate(chunks, 1):
+        prompt = (map_prompt_tpl
+            .replace("{{filename}}", title or "")
+            .replace("{{path}}", "")
+            .replace("{{doc_type}}", doc_type or "TEXT")
+            .replace("{{language}}", language)
+            .replace("{{chunk_text}}", ck)
+        )
+        # 附加类型提示
+        hint = _doc_type_hints(doc_type)
+        prompt = prompt.replace("{{doc_type_hints}}", hint)
+        try:
+            text = _ollama_generate(prompt)
+            obj = _json_from_text(text) or {}
+        except Exception as e:
+            obj = {}
+        # 兜底：结构化最少字段
+        if "keywords" not in obj:
+            obj = {
+                "language": language,
+                "keywords": [{"term": w.strip(), "weight": 0.5, "type": "主题"} for w in (seeds or title or "").split() if w.strip()],
+                "keyphrases": [],
+                "summary": ""
+            }
+        map_results.append(obj)
+
+    reduce_tpl = prompts.get("reduce") or "Merge keyword JSON array:\n{{map_results_json}}"
+    reduce_prompt = (reduce_tpl
+        .replace("{{top_n}}", str(top_n))
+        .replace("{{top_pn}}", str(top_pn))
+        .replace("{{map_results_json}}", json.dumps(map_results, ensure_ascii=False))
+    )
+    try:
+        red_text = _ollama_generate(reduce_prompt)
+        red_obj = _json_from_text(red_text) or {}
+    except Exception:
+        red_obj = {}
+
+    # 归一化输出
+    kws = red_obj.get("keywords") or []
+    # 截断、去重、只保留 term
+    seen, flat = set(), []
+    for item in kws:
+        term = (isinstance(item, dict) and item.get("term")) or (isinstance(item, str) and item) or ""
+        term = term.strip()
+        if not term or term.lower() in seen:
+            continue
+        seen.add(term.lower()); flat.append(term)
+        if len(flat) >= max_len:  # 这里用 max_len 当作显示预算（词数不是严格等于字符数，但符合你的“关键词列”长度控制诉求）
+            break
+
+    return {
+        "title": red_obj.get("title") or title or "",
+        "language": red_obj.get("language") or language,
+        "keywords": kws,                # 完整结构化
+        "keyphrases": red_obj.get("keyphrases") or [],
+        "summary": red_obj.get("summary") or "",
+        "flat_terms": flat              # 逗号拼接用
+    }
+
 @bp.post("/update_keywords")
 def update_keywords():
     data = request.get_json(silent=True) or {}
@@ -210,13 +363,19 @@ def clear_keywords():
 def gen_keywords():
     if not SETTINGS.get("features", {}).get("enable_ai_keywords", True):
         return jsonify({"ok": False, "error": "关键词功能已禁用"}), 403
+
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
     seeds = (data.get("seeds") or "").strip()
     max_len = int(data.get("max_len", 50))
     max_len = max(1, min(200, max_len))
+
+    ai = SETTINGS.get("ai", {}) or {}
+    language = ai.get("language", "zh")
+
     out = {}
     STATE.setdefault("keywords", {})
+    STATE.setdefault("keywords_json", {})   # 新增：保存结构化结果（不影响前端）
 
     for p in paths:
         if not is_under_allowed_roots(p):
@@ -225,25 +384,39 @@ def gen_keywords():
         ext = Path(p).suffix.lower().lstrip(".")
         cat = _detect_category_local(ext)
 
-        if cat in ("TEXT", "DATA", "PDF", "SLIDES", "ARCHIVE"):
-            body = extract_text_for_keywords(p, max_chars=3000)
-            kw = call_ollama_keywords(title, body, max_total_chars=max_len, seeds=seeds) or ""
-            if not kw:
+        try:
+            if cat in ("TEXT", "DATA", "PDF", "SLIDES", "ARCHIVE"):
+                # 尽量多抽文本；extract_text_for_keywords 内部有容错
+                body = extract_text_for_keywords(p, max_chars=200000)  # 调高预算，后续我们自行分块
+                result = _map_reduce_keywords(title, body, cat, seeds=seeds, max_len=max_len)
+                flat = ", ".join(result.get("flat_terms") or [])
+                # 保存
+                out[p] = flat[:max_len*3]  # 适度限制返回字符串长度，避免超长
+                STATE["keywords"][p] = out[p]
+                STATE["keywords_json"][p] = result
+
+            elif cat == "IMAGE":
+                out[p] = "图片关键词提取功能待实现"
+                STATE["keywords"][p] = out[p]
+
+            elif cat == "AUDIO":
+                out[p] = "音频关键词提取功能待实现"
+                STATE["keywords"][p] = out[p]
+
+            else:
                 base = Path(p).stem.replace("_", " ").replace("-", " ")
                 prefix = (seeds + ", ") if seeds else ""
-                kw = prefix + base[:max(0, max_len - len(prefix))]
-        elif cat == "IMAGE":
-            kw = "图片关键词提取功能待实现"
-        elif cat == "AUDIO":
-            kw = "音频关键词提取功能待实现"
-        else:
-            base = Path(p).stem
-            prefix = (seeds + ", ") if seeds else ""
-            kw = prefix + base[:max(0, max_len - len(prefix))]
+                kw = prefix + base
+                out[p] = kw[:max_len*3]
+                STATE["keywords"][p] = out[p]
 
-        kw = kw[:max_len]
-        out[p] = kw
-        STATE["keywords"][p] = kw
+        except Exception as e:
+            # 兜底策略：文件名拆词 + 种子
+            base = Path(p).stem.replace("_", " ").replace("-", " ")
+            prefix = (seeds + ", ") if seeds else ""
+            kw = prefix + base
+            out[p] = kw[:max_len*3]
+            STATE["keywords"][p] = out[p]
 
     save_state()
     return jsonify({"ok": True, "keywords": out})
@@ -263,7 +436,7 @@ def apply_ops():
                 src = op.get("path")
                 if not (src and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
-                send2trash(src)  # 始终回收站删除
+                send2trash(src)
                 log_op("delete", src_path=src)
                 done += 1
 
@@ -323,6 +496,7 @@ def thumb():
     except Exception:
         abort(404)
 
+# -------------------- 登录/登出 --------------------
 @bp.post("/login")
 def login():
     data = request.get_json(silent=True) or {}
@@ -351,7 +525,7 @@ def get_settings():
 @bp.post("/settings")
 def update_settings_route():
     data = request.get_json(silent=True) or {}
-    for key in ("theme", "ai", "features"):
+    for key in ("theme", "ai", "features", "prompts"):
         if key in data:
             SETTINGS[key] = data[key]
     save_settings(SETTINGS)
