@@ -28,6 +28,34 @@
   let features={};
   let lastQuery=null;
   let currentPage=1,totalPages=1,total=0;
+  let opMode=null; // 当前批量操作模式：move/rename/delete
+
+  function setOpMode(mode){
+    opMode=mode;
+    $('#applyMoveBtn').textContent = mode==='move'? '执行移动':'批量移动';
+    $('#applyRenameBtn').textContent = mode==='rename'? '执行重命名':'批量重命名';
+    $('#applyDeleteBtn').textContent = mode==='delete'? '执行删除':'批量删除';
+    updateRowInputs();
+  }
+
+  function updateRowInputs(){
+    const rows=$$('#tbl tbody tr');
+    rows.forEach(tr=>{
+      const cb=tr.querySelector('.ck');
+      const mv=tr.querySelector('.mv');
+      const rn=tr.querySelector('.rn');
+      const path=cb.dataset.path;
+      if(cb.checked){
+        mv.disabled = (opMode!=='move');
+        rn.disabled = (opMode!=='rename');
+        if(opMode==='move' && !mv.value) mv.value=path;
+        if(opMode==='rename' && !rn.value) rn.value=path.split(/[\\\/]/).pop();
+      }else{
+        mv.disabled=true; mv.value='';
+        rn.disabled=true; rn.value='';
+      }
+    });
+  }
 
   function bind(sel,evt,fn){ const el=$(sel); if(el) el.addEventListener(evt,fn); return el; }
 
@@ -180,15 +208,14 @@
         <td>${sizeKB}</td>
         <td>${mtime}</td>
         <td class="kw">${it.keywords||''}</td>
-        <td><input class="mv" placeholder="目标目录" disabled></td>
+        <td><input class="mv" placeholder="新完整路径" disabled></td>
         <td><input class="rn" placeholder="新文件名" disabled></td>
         <td><button class="btn btn-sm pv" ${previewDisabled?'disabled':''} data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
       const ck=tr.querySelector('.ck');
-      const mv=tr.querySelector('.mv');
-      const rn=tr.querySelector('.rn');
-      ck.addEventListener('change',()=>{ mv.disabled=rn.disabled=!ck.checked; });
+      ck.addEventListener('change', updateRowInputs);
       tbody.appendChild(tr);
     });
+    updateRowInputs();
   }
 
   function applyFeatureToggles(s){
@@ -357,7 +384,10 @@
       selected.forEach(cb=>ops.push({action:'delete',path:cb.dataset.path}));
     }else if(action==='move'){
       msg=`确认移动 ${selected.length} 个文件吗？`;
-      selected.forEach(cb=>{ const dst=cb.closest('tr').querySelector('.mv').value.trim(); if(dst) ops.push({action:'move',src:cb.dataset.path,dst}); });
+      selected.forEach(cb=>{
+        const dstFull=cb.closest('tr').querySelector('.mv').value.trim();
+        if(dstFull) ops.push({action:'move',src:cb.dataset.path,dst:dstFull});
+      });
     }else if(action==='rename'){
       msg=`确认重命名 ${selected.length} 个文件吗？`;
       selected.forEach(cb=>{ const newName=cb.closest('tr').querySelector('.rn').value.trim(); if(newName) ops.push({action:'rename',src:cb.dataset.path,new_name:newName}); });
@@ -442,6 +472,33 @@
 
     bind('#genKwBtn','click', onGenKw);
     bind('#clearKwBtn','click', onClearKw);
+    bind('#applyMoveBtn','click',()=>{
+      if(opMode!=='move'){
+        setOpMode('move');
+        alert('已进入批量移动模式，请勾选文件并修改“移动目标”，再点击“执行移动”');
+      }else{
+        setOpMode(null);
+        onApplyOps('move');
+      }
+    });
+    bind('#applyRenameBtn','click',()=>{
+      if(opMode!=='rename'){
+        setOpMode('rename');
+        alert('已进入批量重命名模式，请勾选文件并修改“重命名为”，再点击“执行重命名”');
+      }else{
+        setOpMode(null);
+        onApplyOps('rename');
+      }
+    });
+    bind('#applyDeleteBtn','click',()=>{
+      if(opMode!=='delete'){
+        setOpMode('delete');
+        alert('已进入批量删除模式，请勾选文件，再点击“执行删除”');
+      }else{
+        setOpMode(null);
+        onApplyOps('delete');
+      }
+    });
     $('#tbl')?.addEventListener('click', onPreview);
 
     // 顶栏：设置 / 登录 / 登出 / 用户名
