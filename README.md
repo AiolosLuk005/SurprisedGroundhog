@@ -100,3 +100,5 @@ python app_lan.py
 - **输入路径**：Windows 用 `D:\Work`，Linux/macOS 用 `/home/user/Work`  
 - **权限问题**：移动/删除操作可能需管理员权限  
 - **扩展名支持**：可在 `scanner.py` 或插件中扩展  
+
+- **关键词记录**：AI 提取结果会保存在 `state.json` 中的 `keywords` 和 `keywords_log` 字段，方便调试。

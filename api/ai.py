@@ -4,6 +4,8 @@ from core.extractors import extract_text_for_keywords
 import json, urllib.request, tempfile, os
 from pathlib import Path
 from core.settings import SETTINGS
+from datetime import datetime
+from core.state import STATE, save_state
 
 bp = Blueprint("ai", __name__, url_prefix="/api/ai")
 
@@ -41,6 +43,16 @@ def keywords():
         prefix = (seeds + ", ") if seeds else ""
         remain = max_len - len(prefix)
         out = (prefix + text.replace("\n"," ")[:max(0, remain)]).strip(", ")
+    STATE.setdefault("keywords_log", [])
+    STATE["keywords_log"].append({
+        "time": datetime.utcnow().isoformat(),
+        "source": "text",
+        "seeds": seeds,
+        "input_preview": text[:100],
+        "keywords": out,
+    })
+    STATE["keywords_log"] = STATE["keywords_log"][-100:]
+    save_state()
     return jsonify({"ok": True, "keywords": out})
 
 @bp.post("/keywords_file")
@@ -69,4 +81,15 @@ def keywords_file():
         base = Path(title).stem.replace("_", " ").replace("-", " ")
         prefix = (seeds + ", ") if seeds else ""
         kw = prefix + base[:max(0, max_len - len(prefix))]
-    return jsonify({"ok": True, "keywords": kw[:max_len]})
+    kw = kw[:max_len]
+    STATE.setdefault("keywords_log", [])
+    STATE["keywords_log"].append({
+        "time": datetime.utcnow().isoformat(),
+        "source": "file",
+        "filename": title,
+        "seeds": seeds,
+        "keywords": kw,
+    })
+    STATE["keywords_log"] = STATE["keywords_log"][-100:]
+    save_state()
+    return jsonify({"ok": True, "keywords": kw})
