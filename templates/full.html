@@ -96,7 +96,20 @@
   </div>
 
   <div class="toolbar">
+    <!-- 新增：关键词策略与前缀 -->
+    <input id="kwSeeds" type="text" placeholder="生成前缀（分号;分隔）" style="min-width:220px;">
+    <select id="kwStrategy" title="关键词提取策略" style="min-width:140px;">
+      <option value="hybrid" selected>hybrid（默认）</option>
+      <option value="fast">fast（快速）</option>
+      <option value="embed">embed（语义重排）</option>
+      <option value="llm">llm（模型直生）</option>
+    </select>
+    <label class="pill" title="仅对关键词为空的行执行生成，已存在的不覆盖">
+      <input id="kwOnlyEmpty" type="checkbox"> 仅为空生成
+    </label>
+
     <button class="btn" id="genKwBtn">提取关键词</button>
+    <button class="btn" id="aiRefineBtn" title="在 hybrid 模式下触发 LLM 精修（force_llm=true）">AI 优化</button>
     <button class="btn" id="clearKwBtn">清除关键词</button>
     <button class="btn" id="applyMoveBtn">批量移动</button>
     <button class="btn" id="applyRenameBtn">批量重命名</button>
