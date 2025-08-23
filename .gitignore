@@ -14,3 +14,5 @@ __pycache__/
 # 忽略输出文件夹
 output/
 
+# 忽略自动生成的文件
+state.json

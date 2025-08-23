@@ -45,16 +45,6 @@
       const mv=tr.querySelector('.mv');
       const rn=tr.querySelector('.rn');
       const path=cb.dataset.path;
-      const sep=path.includes('\\')?'\\':'/';
-      const dir=path.split(/[\\\/]/).slice(0,-1).join(sep);
-      const name=path.split(/[\\\/]/).pop();
-      if(cb.checked){
-        mv.disabled = (opMode!=='move');
-        rn.disabled = (opMode!=='rename');
-        if(opMode==='move' && !mv.value) mv.value=dir;
-        if(opMode==='rename' && !rn.value) rn.value=name;
-        if(opMode!=='move') mv.value='';
-        if(opMode!=='rename') rn.value='';
       }else{
         mv.disabled=true; mv.value='';
         rn.disabled=true; rn.value='';
@@ -390,13 +380,6 @@
     }else if(action==='move'){
       msg=`确认移动 ${selected.length} 个文件吗？`;
       selected.forEach(cb=>{
-        const tr=cb.closest('tr');
-        const dstDir=tr.querySelector('.mv').value.trim();
-        if(dstDir){
-          const name=cb.dataset.path.split(/[\\\/]/).pop();
-          const dstFull=normJoin(dstDir,name);
-          ops.push({action:'move',src:cb.dataset.path,dst:dstFull});
-        }
       });
     }else if(action==='rename'){
       msg=`确认重命名 ${selected.length} 个文件吗？`;
