@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from core.ollama import call_ollama_keywords
+from core.ollama import call_ollama_keywords, call_ollama_tags
 from core.extractors import extract_text_for_keywords
 import json, urllib.request, tempfile, os
 from pathlib import Path
@@ -43,6 +43,7 @@ def keywords():
         prefix = (seeds + ", ") if seeds else ""
         remain = max_len - len(prefix)
         out = (prefix + text.replace("\n"," ")[:max(0, remain)]).strip(", ")
+    tags = call_ollama_tags(text[:80], text)
     STATE.setdefault("keywords_log", [])
     STATE["keywords_log"].append({
         "time": datetime.utcnow().isoformat(),
@@ -50,10 +51,11 @@ def keywords():
         "seeds": seeds,
         "input_preview": text[:100],
         "keywords": out,
+        "tags": tags,
     })
     STATE["keywords_log"] = STATE["keywords_log"][-100:]
     save_state()
-    return jsonify({"ok": True, "keywords": out})
+    return jsonify({"ok": True, "keywords": out, "tags": tags})
 
 @bp.post("/keywords_file")
 def keywords_file():
@@ -82,6 +84,7 @@ def keywords_file():
         prefix = (seeds + ", ") if seeds else ""
         kw = prefix + base[:max(0, max_len - len(prefix))]
     kw = kw[:max_len]
+    tags = call_ollama_tags(title, body)
     STATE.setdefault("keywords_log", [])
     STATE["keywords_log"].append({
         "time": datetime.utcnow().isoformat(),
@@ -89,7 +92,8 @@ def keywords_file():
         "filename": title,
         "seeds": seeds,
         "keywords": kw,
+        "tags": tags,
     })
     STATE["keywords_log"] = STATE["keywords_log"][-100:]
     save_state()
-    return jsonify({"ok": True, "keywords": kw})
+    return jsonify({"ok": True, "keywords": kw, "tags": tags})

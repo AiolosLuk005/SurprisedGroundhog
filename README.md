@@ -8,7 +8,7 @@ A lightweight local file organization and analysis tool, based on Flask with fro
 ## 功能特性  
 - **目录扫描**：支持包含/排除子目录  
 - **文件分类**：图片 / 视频 / 音频 / 文档 / 代码 / 压缩包 / 其他  
-- **关键词提取**：轻量版对 txt/md 提取，插件版支持多格式（PDF、Word、Excel、PPT、压缩包）  
+- **关键词提取与标签分类**：轻量版对 txt/md 提取，插件版支持多格式（PDF、Word、Excel、PPT、压缩包），同时利用本地部署的 AI 生成分类标签
 - **文件操作**：重命名 / 移动 / 删除  
 - **导出数据**：扫描结果可导出 CSV，存放到 `output/` 目录  
 - **多端访问**：局域网访问支持 LAN 安全版，防止误操作  
@@ -101,4 +101,4 @@ python app_lan.py
 - **权限问题**：移动/删除操作可能需管理员权限  
 - **扩展名支持**：可在 `scanner.py` 或插件中扩展  
 
-- **关键词记录**：AI 提取结果会保存在 `state.json` 中的 `keywords` 和 `keywords_log` 字段，方便调试。
+- **关键词记录**：AI 提取结果会保存在 `state.json` 中的 `keywords` 和 `keywords_log` 字段（包含 `tags`），方便调试。
