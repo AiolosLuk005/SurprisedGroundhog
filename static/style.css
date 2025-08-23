@@ -29,7 +29,10 @@ th,td{border-bottom:1px solid #eee;padding:8px;text-align:left}
 .feature-grid{display:flex;gap:20px}
 .feature-grid>div{flex:1}
 .fixed-table{table-layout:fixed;width:100%}
-.fixed-table th,.fixed-table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fixed-table th,.fixed-table td{
+  white-space:normal;
+  word-break:break-all;
+}
 .col-select{width:42px}
 .col-name{width:220px}
 .col-path{width:260px}
@@ -42,9 +45,3 @@ th,td{border-bottom:1px solid #eee;padding:8px;text-align:left}
 .col-rename{width:160px}
 .col-preview{width:80px}
 
-/* Allow keywords column to wrap and show full content */
-.fixed-table td.kw{
-  white-space:normal;
-  word-break:break-all;
-  overflow:visible;
-}

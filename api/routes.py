@@ -443,11 +443,10 @@ def apply_ops():
             elif action == "move":
                 if not SETTINGS.get("features", {}).get("enable_move", True):
                     raise ValueError("移动功能已禁用")
-                src, dst_dir = op.get("src"), op.get("dst")
-                if not (src and dst_dir and is_under_allowed_roots(src) and is_under_allowed_roots(dst_dir)):
+                src, dst_full = op.get("src"), op.get("dst")
+                if not (src and dst_full and is_under_allowed_roots(src) and is_under_allowed_roots(dst_full)):
                     raise ValueError("路径不合法")
-                Path(dst_dir).mkdir(parents=True, exist_ok=True)
-                dst_full = str(Path(dst_dir) / Path(src).name)
+                Path(dst_full).parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(src, dst_full)
                 log_op("move", src_path=src, dst_path=dst_full)
                 done += 1
