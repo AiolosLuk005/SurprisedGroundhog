@@ -45,11 +45,6 @@
       const mv=tr.querySelector('.mv');
       const rn=tr.querySelector('.rn');
       const path=cb.dataset.path;
-      if(cb.checked){
-        mv.disabled = (opMode!=='move');
-        rn.disabled = (opMode!=='rename');
-        if(opMode==='move' && !mv.value) mv.value=path;
-        if(opMode==='rename' && !rn.value) rn.value=path.split(/[\\\/]/).pop();
       }else{
         mv.disabled=true; mv.value='';
         rn.disabled=true; rn.value='';
@@ -385,8 +380,6 @@
     }else if(action==='move'){
       msg=`确认移动 ${selected.length} 个文件吗？`;
       selected.forEach(cb=>{
-        const dstFull=cb.closest('tr').querySelector('.mv').value.trim();
-        if(dstFull) ops.push({action:'move',src:cb.dataset.path,dst:dstFull});
       });
     }else if(action==='rename'){
       msg=`确认重命名 ${selected.length} 个文件吗？`;
