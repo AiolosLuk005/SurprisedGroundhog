@@ -7,14 +7,24 @@ import requests
 from PIL import Image
 from send2trash import send2trash
 
-from core.config import ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT, MYSQL_ENABLED, TRASH_DIR
-from core.utils.iterfiles import is_under_allowed_roots, iter_files  # 复用扫描逻辑
-from core.extractors import extract_text_for_keywords
-# 原有轻量关键词调用仍保留（作为兜底），但我们优先使用本文件的新 Map-Reduce
-# from core.ollama import call_ollama_keywords
+from core.config import (
+    ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT,
+    MYSQL_ENABLED, TRASH_DIR, CFG
+)
+from core.utils.iterfiles import is_under_allowed_roots, iter_files, detect_category  # 复用扫描逻辑
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
 from core.settings import SETTINGS, save_settings
+
+# 新增：关键词流水线服务
+try:
+    from services.keywords import (
+        extract_text_for_keywords, kw_fast, kw_embed, kw_llm,
+        compose_keywords
+    )
+except Exception:  # pragma: no cover - 如果依赖缺失
+    extract_text_for_keywords = None
+    kw_fast = kw_embed = kw_llm = compose_keywords = None
 
 bp = Blueprint("full_api", __name__)
 
@@ -366,57 +376,65 @@ def gen_keywords():
 
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
-    seeds = (data.get("seeds") or "").strip()
-    max_len = int(data.get("max_len", 50))
-    max_len = max(1, min(200, max_len))
+    seeds_raw = (data.get("seeds") or "").strip()
+    strategy = (data.get("strategy") or CFG.get("keywords", {}).get("mode", "hybrid")).lower()
+    force_llm = bool(data.get("force_llm"))
 
-    ai = SETTINGS.get("ai", {}) or {}
-    language = ai.get("language", "zh")
+    max_chars = int(CFG.get("keywords", {}).get("max_chars", 50))
+    lang = (CFG.get("keywords", {}).get("lang", "zh") or "zh")
+
+    ollama_cfg = CFG.get("ollama", {})
+    ollama_enable = bool(ollama_cfg.get("enable"))
+    ollama_model = ollama_cfg.get("model", "phi3:mini")
+    ollama_timeout = int(ollama_cfg.get("timeout_sec", 30))
 
     out = {}
     STATE.setdefault("keywords", {})
-    STATE.setdefault("keywords_json", {})   # 新增：保存结构化结果（不影响前端）
 
     for p in paths:
         if not is_under_allowed_roots(p):
             continue
         title = Path(p).name
+        stem = Path(p).stem.replace("_", " ").replace("-", " ")
         ext = Path(p).suffix.lower().lstrip(".")
-        cat = _detect_category_local(ext)
+        cat = detect_category(ext)
+
+        body = ""
+        if cat in ("TEXT", "DATA", "PDF") and extract_text_for_keywords:
+            body = extract_text_for_keywords(p, max_chars=3000)
+
+        seeds = seeds_raw.replace("；", ";").replace(",", ";")
+        seeds = "，".join([s.strip() for s in seeds.split(";") if s.strip()])
+
+        result_kw = ""
 
         try:
-            if cat in ("TEXT", "DATA", "PDF", "SLIDES", "ARCHIVE"):
-                # 尽量多抽文本；extract_text_for_keywords 内部有容错
-                body = extract_text_for_keywords(p, max_chars=200000)  # 调高预算，后续我们自行分块
-                result = _map_reduce_keywords(title, body, cat, seeds=seeds, max_len=max_len)
-                flat = ", ".join(result.get("flat_terms") or [])
-                # 保存
-                out[p] = flat[:max_len*3]  # 适度限制返回字符串长度，避免超长
-                STATE["keywords"][p] = out[p]
-                STATE["keywords_json"][p] = result
-
-            elif cat == "IMAGE":
-                out[p] = "图片关键词提取功能待实现"
-                STATE["keywords"][p] = out[p]
-
-            elif cat == "AUDIO":
-                out[p] = "音频关键词提取功能待实现"
-                STATE["keywords"][p] = out[p]
-
+            if strategy == "fast":
+                parts = kw_fast(body, lang=lang, topk=12) if kw_fast else []
+                result_kw = compose_keywords(seeds, parts or [stem], max_chars=max_chars)
+            elif strategy == "embed":
+                base = kw_fast(body, lang=lang, topk=12) if kw_fast else []
+                parts = kw_embed(body, base, topk=8) if kw_embed else base
+                result_kw = compose_keywords(seeds, parts or [stem], max_chars=max_chars)
+            elif strategy == "llm" and ollama_enable and kw_llm:
+                result_kw = kw_llm(title, body, seeds, max_chars=max_chars,
+                                   model=ollama_model, timeout=ollama_timeout)
+                if not result_kw:
+                    result_kw = compose_keywords(seeds, [stem], max_chars=max_chars)
             else:
-                base = Path(p).stem.replace("_", " ").replace("-", " ")
-                prefix = (seeds + ", ") if seeds else ""
-                kw = prefix + base
-                out[p] = kw[:max_len*3]
-                STATE["keywords"][p] = out[p]
+                base = kw_fast(body, lang=lang, topk=12) if kw_fast else []
+                parts = kw_embed(body, base, topk=8) if kw_embed else base
+                result_kw = compose_keywords(seeds, parts or [stem], max_chars=max_chars)
+                if force_llm and ollama_enable and kw_llm:
+                    llm_out = kw_llm(title, body, seeds, max_chars=max_chars,
+                                     model=ollama_model, timeout=ollama_timeout)
+                    if llm_out:
+                        result_kw = llm_out
+        except Exception:
+            result_kw = compose_keywords(seeds, [stem], max_chars=max_chars)
 
-        except Exception as e:
-            # 兜底策略：文件名拆词 + 种子
-            base = Path(p).stem.replace("_", " ").replace("-", " ")
-            prefix = (seeds + ", ") if seeds else ""
-            kw = prefix + base
-            out[p] = kw[:max_len*3]
-            STATE["keywords"][p] = out[p]
+        out[p] = result_kw
+        STATE["keywords"][p] = result_kw
 
     save_state()
     return jsonify({"ok": True, "keywords": out})
