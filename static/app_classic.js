@@ -224,7 +224,15 @@
     Object.entries(map).forEach(([cat,key])=>{
       const opt=$(`#category option[value="${cat}"]`); if(opt) opt.disabled = !features[key];
     });
-    if(!features.enable_ai_keywords){ $('#kw_len').disabled=true; $('#genKwBtn').disabled=true; $('#clearKwBtn').disabled=true; }
+    if(!features.enable_ai_keywords){
+      $('#kw_len')?.setAttribute('disabled', 'disabled');
+      $('#kwSeeds')?.setAttribute('disabled', 'disabled');
+      $('#kwStrategy')?.setAttribute('disabled', 'disabled');
+      $('#kwOnlyEmpty')?.setAttribute('disabled', 'disabled');
+      $('#genKwBtn')?.setAttribute('disabled', 'disabled');
+      $('#aiRefineBtn')?.setAttribute('disabled', 'disabled');
+      $('#clearKwBtn')?.setAttribute('disabled', 'disabled');
+    }
     if(!features.enable_move){ $('#applyMoveBtn').disabled=true; }
     if(!features.enable_rename){ $('#applyRenameBtn').disabled=true; }
     if(!features.enable_delete){ $('#applyDeleteBtn').disabled=true; }
@@ -404,18 +412,31 @@
     customConfirm(`完成 ${j.done} 项${j.errors?.length?`，失败 ${j.errors.length} 项`:''}`).then(()=>{});
   }
 
-  async function onGenKw(){
+  async function genKw(forceLLM=false){
     const selected=$$('#tbl tbody .ck:checked');
     if(selected.length===0){ customConfirm('请选择要提取关键词的文件').then(()=>{}); return; }
-    const paths=selected.map(cb=>cb.dataset.path);
-    const maxLen=Number($('#kw_len')?.value||50)||50;
+    const onlyEmpty=$('#kwOnlyEmpty')?.checked;
+    const targets=selected.filter(cb=>{
+      const kw=cb.closest('tr').querySelector('.kw').textContent.trim();
+      return !onlyEmpty || !kw;
+    });
+    if(targets.length===0){ customConfirm('没有可处理的文件').then(()=>{}); return; }
+    const paths=targets.map(cb=>cb.dataset.path);
+    let seeds=$('#kwSeeds')?.value||'';
+    seeds=seeds.replace(/[；;]/g,',').split(',').map(s=>s.trim()).filter(Boolean);
+    seeds=Array.from(new Set(seeds)).join(',');
+    const strategy=$('#kwStrategy')?.value||'hybrid';
     toggleLoading(true,'正在提取关键词…');
-    const res=await firstOK(PATHS.kw,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths,max_len:maxLen})});
+    const body={paths,seeds,strategy,force_llm:!!forceLLM};
+    const res=await firstOK(PATHS.kw,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     toggleLoading(false);
     if(!res.ok){ customConfirm('提取失败：'+res.error).then(()=>{}); return; }
     const j=await res.r.json();
     if(!j.ok){ customConfirm('提取失败：'+(j.error||'' )).then(()=>{}); return; }
-    selected.forEach(cb=>{ const kw=j.keywords?.[cb.dataset.path]||''; cb.closest('tr').querySelector('.kw').textContent=kw; });
+    targets.forEach(cb=>{
+      const kw=j.keywords?.[cb.dataset.path]||'';
+      cb.closest('tr').querySelector('.kw').textContent=kw;
+    });
     customConfirm(`成功提取 ${Object.keys(j.keywords||{}).length} 个文件的关键词`).then(()=>{});
   }
 
@@ -470,7 +491,8 @@
     bind('#kwFilterBtn','click', applyKwFilter);
     bind('#kwFilter','keyup', (e)=>{ if(e.key==='Enter') applyKwFilter(); });
 
-    bind('#genKwBtn','click', onGenKw);
+    bind('#genKwBtn','click', ()=>genKw(false));
+    bind('#aiRefineBtn','click', ()=>genKw(true));
     bind('#clearKwBtn','click', onClearKw);
     bind('#applyMoveBtn','click',()=>{
       if(opMode!=='move'){
