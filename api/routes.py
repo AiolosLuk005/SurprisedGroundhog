@@ -18,6 +18,7 @@ from core.config import (
 from core.utils.iterfiles import is_under_allowed_roots, iter_files, detect_category  # 复用扫描逻辑
 from core.state import STATE, save_state
 from core.mysql_log import get_mysql_conn, log_op
+from core.normalize_runner import normalize_file
 from core.settings import SETTINGS, save_settings
 
 # 新增：关键词流水线服务
@@ -193,6 +194,33 @@ def import_mysql():
         cur.executemany(sql, batch); conn.commit(); count += len(batch)
     cur.close(); conn.close()
     return jsonify({"ok": True, "inserted": count})
+
+# -------------------- Normalize Files --------------------
+@bp.post("/normalize")
+def normalize_endpoint():
+    data = request.get_json(force=True, silent=True) or {}
+    files = data.get("files") or []
+    strategy = data.get("on_unsupported") or "fallback"
+    collection = data.get("collection") or "default"
+    base_dir = SETTINGS.get("normalize", {}).get("artifact_dir", "data/normalized")
+    out_root = Path(base_dir) / collection
+    results = []
+    for f in files:
+        try:
+            res = normalize_file(f, out_root, on_unsupported=strategy)
+            results.append({
+                "path": f,
+                "ok": res.ok,
+                "doc_id": res.doc_id,
+                "out_dir": res.out_dir,
+                "md": list(res.md_paths or []),
+                "csv": list(res.csv_paths or []),
+                "sidecar": res.sidecar,
+                "message": res.message,
+            })
+        except Exception as e:
+            results.append({"path": f, "ok": False, "doc_id": "", "out_dir": "", "md": [], "csv": [], "sidecar": "", "message": str(e)})
+    return jsonify({"ok": True, "results": results})
 
 # -------------------- 关键词管理（本地 Ollama Map-Reduce 增强） --------------------
 

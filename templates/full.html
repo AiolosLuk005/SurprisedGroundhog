@@ -111,6 +111,7 @@
     <input id="kw_len" type="number" value="50" min="10" max="200" style="width:80px;">
     <button class="btn" id="exportBtn">导出 CSV</button>
     <button class="btn" id="importBtn">导入 MySQL</button>
+    <label class="pill"><input type="checkbox" id="autoNormalize"> 导入后规范化</label>
   </div>
 
   <div class="toolbar">
@@ -123,6 +124,12 @@
     <button class="btn" id="genKwBtn">提取关键词</button>
     <button class="btn" id="aiRefineBtn" title="在 hybrid 模式下触发 LLM 精修（force_llm=true）">AI 优化</button>
     <button class="btn" id="clearKwBtn">清除关键词</button>
+    <select id="normStrategy" style="min-width:120px;">
+      <option value="fallback" selected>fallback</option>
+      <option value="skip">skip</option>
+      <option value="ledger">ledger</option>
+    </select>
+    <button class="btn" id="normalizeBtn">规范化转换</button>
     <button class="btn" id="applyMoveBtn">批量移动</button>
     <button class="btn" id="applyRenameBtn">批量重命名</button>
     <button class="btn" id="applyDeleteBtn">批量删除</button>
@@ -138,6 +145,7 @@
       <col class="col-size">
       <col class="col-mtime">
       <col class="col-keywords">
+      <col class="col-norm">
       <col class="col-move">
       <col class="col-rename">
       <col class="col-preview">
@@ -152,6 +160,7 @@
         <th>大小（kB）</th>
         <th>修改时间</th>
         <th>关键词</th>
+        <th>规范化</th>
         <th>移动目标</th>
         <th>重命名为</th>
         <th>预览</th>
