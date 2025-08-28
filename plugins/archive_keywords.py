@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 from core.plugin_base import ExtractResult, register
+from core.chunking import Chunk
 
 class ArchiveKeywords:
     name = "archive-keywords"
@@ -50,6 +51,12 @@ class ArchiveKeywords:
             pass
 
         txt = ' '.join(sorted(words))[:max_chars]
-        return ExtractResult(text=txt, meta={'handler': self.name, 'unique_tokens': len(words)})
+        chunk = Chunk(
+            id=f"{path}#0",
+            doc_id=path,
+            text=txt,
+            metadata={'handler': self.name, 'unique_tokens': len(words)},
+        )
+        return ExtractResult(text=txt, meta={'handler': self.name, 'unique_tokens': len(words)}, chunks=[chunk])
     
 register(ArchiveKeywords())

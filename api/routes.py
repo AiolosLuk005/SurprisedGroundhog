@@ -8,6 +8,9 @@ from PIL import Image
 from send2trash import send2trash
 from services.retrieval import HybridRetriever
 
+from core.extractors import extract_chunks
+from core.chunking import index_chunks
+
 from core.config import (
     ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT,
     MYSQL_ENABLED, TRASH_DIR, CFG
@@ -511,7 +514,7 @@ def thumb():
             buf = io.BytesIO()
             im.save(buf, format="JPEG")
             buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg")
+        return send_file(buf, mimetype="image/jpeg")
     except Exception:
         abort(404)
 
@@ -533,6 +536,18 @@ def search():
         search_type=p.get("search_type", "hybrid"),
     )
     return jsonify({"results": hits})
+
+
+# -------------------- 索引接口 --------------------
+@bp.post("/index")
+def index_file():
+    data = request.get_json(silent=True) or {}
+    path = data.get("path")
+    if not (path and is_under_allowed_roots(path)):
+        return jsonify({"ok": False, "error": "路径不合法"}), 400
+    chunks = extract_chunks(path)
+    count = index_chunks(chunks, retriever)
+    return jsonify({"ok": True, "chunks": count})
 
 # -------------------- 登录/登出 --------------------
 @bp.post("/login")
