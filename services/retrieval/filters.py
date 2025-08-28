@@ -7,7 +7,7 @@ required by the project: ``$and``, ``$or``, ``$in``, ``$gte``, ``$lte``,
 from __future__ import annotations
 
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Callable
 
 
 def _match_expr(value: Any, expr: Any) -> bool:
@@ -39,32 +39,60 @@ def _match_expr(value: Any, expr: Any) -> bool:
             else:  # unknown operator
                 return False
         return True
-    else:
-        return value == expr
+    return value == expr
 
 
-def match_where(obj: Dict[str, Any], where: Dict[str, Any] | None) -> bool:
-    """Return True if ``obj`` satisfies ``where`` expression."""
+def _build(where: Dict[str, Any] | None) -> Callable[[Dict[str, Any]], bool]:
+    """Compile a ``where`` expression into a predicate function."""
 
     if not where:
-        return True
-    if "$and" in where:
-        return all(match_where(obj, w) for w in where["$and"])
-    if "$or" in where:
-        return any(match_where(obj, w) for w in where["$or"])
+        return lambda obj: True
 
+    if "$and" in where:
+        preds = [_build(w) for w in where["$and"]]
+        return lambda obj: all(p(obj) for p in preds)
+
+    if "$or" in where:
+        preds = [_build(w) for w in where["$or"]]
+        return lambda obj: any(p(obj) for p in preds)
+
+    tests = []
     for field, expr in where.items():
         if field.startswith("$"):
             continue
-        if not _match_expr(obj.get(field), expr):
-            return False
-    return True
+
+        def test(obj: Dict[str, Any], field=field, expr=expr) -> bool:
+            return _match_expr(obj.get(field), expr)
+
+        tests.append(test)
+
+    return lambda obj: all(t(obj) for t in tests)
+
+
+def build_where(where: Dict[str, Any] | None) -> Callable[[Dict[str, Any]], bool]:
+    """Return predicate checking a metadata dictionary against ``where``."""
+
+    return _build(where)
+
+
+def match_where(obj: Dict[str, Any], where: Dict[str, Any] | None) -> bool:
+    """Immediate evaluation helper for ``where`` expressions."""
+
+    return build_where(where)(obj)
+
+
+def build_where_document(where_doc: Dict[str, Any] | None) -> Callable[[str], bool]:
+    """Return predicate evaluating ``where_document`` against text."""
+
+    if not where_doc:
+        return lambda text: True
+
+    doc_pred = build_where({"document": where_doc})
+    return lambda text: doc_pred({"document": text})
 
 
 def match_where_document(text: str, where_doc: Dict[str, Any] | None) -> bool:
-    """Evaluate ``where_document`` against text content."""
+    """Immediate evaluation helper for ``where_document`` expressions."""
 
-    if not where_doc:
-        return True
-    # Reuse ``match_where`` by pretending the text is a field named 'document'.
-    return match_where({"document": text}, {"document": where_doc})
+    return build_where_document(where_doc)(text)
+

@@ -6,11 +6,11 @@ dependency baseline that mirrors the API of a more sophisticated backend.
 """
 from __future__ import annotations
 
-from collections import Counter
+import re
 from typing import Dict, Any, Iterable, List
 
 from .retriever import Hit, Retriever
-from .filters import match_where, match_where_document
+from .filters import build_where, build_where_document
 
 
 class BM25Local(Retriever):
@@ -43,15 +43,17 @@ class BM25Local(Retriever):
     ) -> List[Hit]:
         if not query_texts:
             return []
-        terms = query_texts[0].split()
+        patterns = [re.compile(t, re.IGNORECASE) for t in query_texts[0].split()]
+        meta_pred = build_where(where)
+        doc_pred = build_where_document(where_document)
         scores = []
         for ch in self._docs.values():
-            if not match_where(ch.get("metadata", {}), where):
+            if not meta_pred(ch.get("metadata", {})):
                 continue
-            if not match_where_document(ch.get("text", ""), where_document):
+            text = ch.get("text", "")
+            if not doc_pred(text):
                 continue
-            cnt = Counter(ch.get("text", "").split())
-            score = sum(cnt[t] for t in terms)
+            score = sum(len(p.findall(text)) for p in patterns)
             if score:
                 scores.append((score, ch))
         scores.sort(key=lambda x: x[0], reverse=True)
