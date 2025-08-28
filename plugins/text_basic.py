@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 from core.plugin_base import ExtractResult, register
+from core.chunking import Chunk
 
 class TextBasic:
     name = "text-basic"
@@ -17,6 +18,12 @@ class TextBasic:
                 txt = f.read(max_chars)
         except Exception:
             txt = ''
-        return ExtractResult(text=txt, meta={'handler': self.name})
+        chunk = Chunk(
+            id=f"{path}#0",
+            doc_id=path,
+            text=txt,
+            metadata={'handler': self.name},
+        )
+        return ExtractResult(text=txt, meta={'handler': self.name}, chunks=[chunk])
 
 register(TextBasic())

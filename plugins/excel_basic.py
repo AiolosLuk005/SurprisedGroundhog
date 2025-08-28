@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 from core.plugin_base import ExtractResult, register
+from core.chunking import Chunk
 
 class ExcelBasic:
     name = "excel-basic"
@@ -13,6 +14,7 @@ class ExcelBasic:
 
     def extract(self, path: str, max_chars: int = 4000) -> ExtractResult:
         text = ''
+        chunks = []
         try:
             ext = Path(path).suffix.lower()
             rows = []
@@ -35,6 +37,15 @@ class ExcelBasic:
             text = "\n".join(rows)[:max_chars]
         except Exception:
             text = ''
-        return ExtractResult(text=text, meta={'handler': self.name})
+        if text:
+            chunks.append(
+                Chunk(
+                    id=f"{path}#0",
+                    doc_id=path,
+                    text=text,
+                    metadata={'handler': self.name},
+                )
+            )
+        return ExtractResult(text=text, meta={'handler': self.name}, chunks=chunks)
     
 register(ExcelBasic())
