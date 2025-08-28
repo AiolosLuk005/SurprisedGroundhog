@@ -527,6 +527,13 @@ def search():
     ``query``, ``k``, ``where`` and ``where_document``.
     """
 
+    # Parse request parameters (compatible with Chroma-style JSON)
+    p = request.get_json(silent=True) or {}
+    collection = p.get("collection", "default")
+
+    # Perform the query using the configured CollectionManager
+    res = retriever.query(
+        collection,
         [p.get("query", "")],
         k=p.get("k", 10),
         where=p.get("where"),
