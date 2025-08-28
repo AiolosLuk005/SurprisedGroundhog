@@ -16,10 +16,11 @@ Extractor orchestrator with safe fallback.
 """
 
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 from core.plugin_loader import discover_plugins, get_plugins
 from core.plugin_base import ExtractorPlugin
+from core.chunking import Chunk
 
 # ---------------- internal state ----------------
 _PLUGINS_READY = False
@@ -42,6 +43,7 @@ def _ensure_plugins() -> None:
                     import plugins.excel_basic  # noqa: F401
                     import plugins.ppt_basic  # noqa: F401
                     import plugins.archive_keywords  # noqa: F401
+                    import plugins.image_basic  # noqa: F401
                 except Exception:
                     pass
         finally:
@@ -88,4 +90,32 @@ def extract_text_for_keywords(path: str, max_chars: int = 4000) -> str:
     except Exception:
         return ""
 
-__all__ = ["extract_text_for_keywords"]
+def extract_chunks(path: str, max_chars: int = 4000) -> List[Chunk]:
+    """Extract structured chunks from a document."""
+
+    p = Path(path)
+    _ensure_plugins()
+
+    try:
+        for plugin in get_plugins():  # type: Iterable[ExtractorPlugin]
+            try:
+                if plugin.can_handle(str(p)):
+                    res = plugin.extract(str(p), max_chars=max_chars) or {}
+                    chunks = res.get("chunks")
+                    if chunks:
+                        return chunks[:]
+                    txt = res.get("text") or ""
+                    if txt:
+                        return [Chunk(id=f"{p}#0", doc_id=str(p), text=txt[:max_chars])]
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    txt = _fallback_extract_text(str(p), max_chars=max_chars)
+    if txt:
+        return [Chunk(id=f"{p}#0", doc_id=str(p), text=txt)]
+    return []
+
+
+__all__ = ["extract_text_for_keywords", "extract_chunks"]

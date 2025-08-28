@@ -8,6 +8,9 @@
     "admin": 1
   },
   "theme": "system",
+  "collections": {
+    "default": "data/collections/default"
+  },
 
   "ai": {
     "provider": "ollama",

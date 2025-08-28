@@ -56,6 +56,18 @@
     <div id="userTools" style="margin-left:auto; display:flex; align-items:center; gap:8px;"></div>
   </div>
 
+  <!-- 顶部搜索工具栏 -->
+  <div class="toolbar" id="searchToolbar">
+    <input id="searchInput" type="text" placeholder="内容搜索…" style="min-width:220px;">
+    <label style="margin-left:8px;">k：</label>
+    <input id="searchK" type="number" value="5" min="1" max="100" style="width:60px;">
+    <label class="pill"><input type="checkbox" id="chkVector" checked> 向量</label>
+    <label class="pill"><input type="checkbox" id="chkFull" checked> 全文</label>
+    <label class="pill"><input type="checkbox" id="chkRegex"> 正则</label>
+    <button class="btn" id="filterBuilderBtn">过滤器构造器</button>
+    <button class="btn" id="searchBtn">搜索</button>
+  </div>
+
   <div class="row">
     <label for="category">档案种类：</label>
     <select id="category">
@@ -154,6 +166,9 @@
     <button class="btn" id="next">下一页</button>
   </div>
 
+  <!-- 搜索结果区域 -->
+  <div id="searchResults" class="row" style="flex-direction:column; gap:8px;"></div>
+
   <!-- 目录选择弹窗 -->
   <div id="dirModal" class="modal">
     <div class="modal-content">
@@ -170,6 +185,26 @@
       </div>
       <div class="modal-foot">
         <button class="btn" id="dirOk">使用此目录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 过滤器构造器弹窗 -->
+  <div id="filterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-head">
+        <strong>过滤器构造器</strong>
+        <button class="btn btn-sm" id="filterClose">关闭</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:8px;">
+        <label>where JSON：</label>
+        <textarea id="whereInput" style="width:100%;height:60px;"></textarea>
+        <label>where_document JSON：</label>
+        <textarea id="whereDocInput" style="width:100%;height:60px;"></textarea>
+      </div>
+      <div class="modal-foot">
+        <div></div>
+        <button class="btn" id="filterOk">确定</button>
       </div>
     </div>
   </div>

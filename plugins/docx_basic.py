@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 from core.plugin_base import ExtractResult, register
+from core.chunking import Chunk
 
 class DocxBasic:
     name = "docx-basic"
@@ -13,6 +14,7 @@ class DocxBasic:
 
     def extract(self, path: str, max_chars: int = 4000) -> ExtractResult:
         text = ''
+        chunks = []
         try:
             from docx import Document
             doc = Document(path)
@@ -25,6 +27,15 @@ class DocxBasic:
             text = "\n".join(parts)[:max_chars]
         except Exception:
             text = ''
-        return ExtractResult(text=text, meta={'handler': self.name})
+        if text:
+            chunks.append(
+                Chunk(
+                    id=f"{path}#0",
+                    doc_id=path,
+                    text=text,
+                    metadata={'handler': self.name},
+                )
+            )
+        return ExtractResult(text=text, meta={'handler': self.name}, chunks=chunks)
     
 register(DocxBasic())

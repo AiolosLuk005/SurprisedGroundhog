@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from core.plugin_base import ExtractResult, register
+from core.chunking import Chunk
 
 class PdfBasic:
     name = "pdf-basic"
@@ -12,21 +13,34 @@ class PdfBasic:
 
     def extract(self, path: str, max_chars: int = 4000) -> ExtractResult:
         text = ''
+        chunks = []
         try:
             from PyPDF2 import PdfReader
             reader = PdfReader(path)
-            for page in reader.pages[:30]:
+            for idx, page in enumerate(reader.pages[:30], 1):
                 try:
-                    text += (page.extract_text() or '') + "\n"
+                    ptxt = (page.extract_text() or '')
+                except Exception:
+                    ptxt = ''
+                if ptxt:
+                    ptxt = ptxt[:max_chars]
+                    chunks.append(
+                        Chunk(
+                            id=f"{path}#p{idx}",
+                            doc_id=path,
+                            text=ptxt,
+                            page=idx,
+                            metadata={'handler': self.name},
+                        )
+                    )
+                    text += ptxt + "\n"
                     if len(text) >= max_chars:
                         break
-                except Exception:
-                    continue
             text = text[:max_chars]
             pages_scanned = min(len(getattr(reader,'pages',[])), 30)
         except Exception:
             text = ''
             pages_scanned = 0
-        return ExtractResult(text=text, meta={'pages_scanned': pages_scanned, 'handler': self.name})
+        return ExtractResult(text=text, meta={'pages_scanned': pages_scanned, 'handler': self.name}, chunks=chunks)
 
 register(PdfBasic())
