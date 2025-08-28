@@ -73,6 +73,14 @@ python app_lan.py
 
 ---
 
+## 规范化转换
+- `POST /normalize` 批量将 Word/Excel/PDF 等文件转为 Markdown/CSV
+- 前端“规范化转换”按钮支持 skip/ledger/fallback 策略
+- 产物落盘 `data/normalized/collection/doc_id/`，含 document.md, table_*.csv, sidecar.json
+- 重复文件基于 sha256+mtime 跳过计算，失败不影响其他任务
+
+---
+
 ## 检索功能
 
 ### Collection 概念与目录结构
