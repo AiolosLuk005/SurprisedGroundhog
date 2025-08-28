@@ -29,6 +29,7 @@
   let lastQuery=null;
   let currentPage=1,totalPages=1,total=0;
   let opMode=null; // 当前批量操作模式：move/rename/delete
+  let filterWhere=null, filterWhereDoc=null; // 搜索过滤器
 
   function setOpMode(mode){
     opMode=mode;
@@ -216,6 +217,75 @@
       tbody.appendChild(tr);
     });
     updateRowInputs();
+  }
+
+  // ---------- 搜索与过滤 ----------
+
+  function highlightText(text, kw){
+    if(!text) return '';
+    let html=String(text);
+    const words=(kw||'').split(/\s+/).filter(Boolean);
+    words.forEach(w=>{
+      const re=new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+      html=html.replace(re, m=>`<mark>${m}</mark>`);
+    });
+    return html;
+  }
+
+  function isImageResult(it){
+    const p=String(it.path||it.full||it.fullpath||'');
+    const cat=String(it.category||it.cat||it.type||'').toUpperCase();
+    return /\.(jpg|jpeg|gif|png|tif|tiff|bmp|webp)$/i.test(p) || cat==='IMAGE';
+  }
+
+  function renderSearchResults(res){
+    const area=$('#searchResults');
+    if(!area) return;
+    const items=Array.isArray(res?.data)?res.data:(Array.isArray(res?.items)?res.items:[]);
+    area.innerHTML='';
+    items.forEach(it=>{
+      const content=it.document||it.text||it.content||'';
+      let html=highlightText(content,$('#searchInput')?.value||'');
+      let extra='';
+      if(isImageResult(it)){
+        const sim=it.similarity??it.score??'';
+        const near=Array.isArray(it.near_duplicates||it.nearDup)?(it.near_duplicates||it.nearDup):[];
+        const fold=near.length?`<details><summary>近重复(${near.length})</summary>${near.map(n=>`<div>${n.path||n}</div>`).join('')}</details>`:'';
+        extra=`<div class="img-extra">相似度:${sim} ${fold}</div>`;
+      }
+      area.innerHTML+=`<div class="result-item">${extra}<div class="result-text">${html}</div></div>`;
+    });
+  }
+
+  async function doSearch(){
+    const q=$('#searchInput')?.value||'';
+    const k=parseInt($('#searchK')?.value)||5;
+    const channels=[]; if($('#chkVector')?.checked) channels.push('vector'); if($('#chkFull')?.checked) channels.push('fulltext'); if($('#chkRegex')?.checked) channels.push('regex');
+    const body={q,k,channels};
+    if(filterWhere) body.where=filterWhere;
+    if(filterWhereDoc) body.where_document=filterWhereDoc;
+    toggleLoading(true,'搜索中…');
+    try{
+      const r=await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const j=await r.json();
+      renderSearchResults(j);
+    }catch(e){
+      console.warn('search failed',e);
+      const area=$('#searchResults'); if(area) area.textContent='搜索失败';
+    }
+    toggleLoading(false);
+  }
+
+  function openFilterModal(){
+    $('#whereInput').value=filterWhere?JSON.stringify(filterWhere, null, 2):'';
+    $('#whereDocInput').value=filterWhereDoc?JSON.stringify(filterWhereDoc, null, 2):'';
+    $('#filterModal').style.display='block';
+  }
+  function closeFilterModal(){ $('#filterModal').style.display='none'; }
+  function applyFilterModal(){
+    try{ const txt=$('#whereInput').value.trim(); filterWhere=txt?JSON.parse(txt):null; }catch(e){ alert('where JSON 无效'); return; }
+    try{ const txt2=$('#whereDocInput').value.trim(); filterWhereDoc=txt2?JSON.parse(txt2):null; }catch(e){ alert('where_document JSON 无效'); return; }
+    closeFilterModal();
   }
 
   function applyFeatureToggles(s){
@@ -490,6 +560,12 @@
     bind('#exportBtn','click', onExport);
     bind('#kwFilterBtn','click', applyKwFilter);
     bind('#kwFilter','keyup', (e)=>{ if(e.key==='Enter') applyKwFilter(); });
+
+    bind('#searchBtn','click', doSearch);
+    bind('#searchInput','keyup', (e)=>{ if(e.key==='Enter') doSearch(); });
+    bind('#filterBuilderBtn','click', openFilterModal);
+    bind('#filterOk','click', applyFilterModal);
+    bind('#filterClose','click', closeFilterModal);
 
     bind('#genKwBtn','click', ()=>genKw(false));
     bind('#aiRefineBtn','click', ()=>genKw(true));
