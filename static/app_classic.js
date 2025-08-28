@@ -172,8 +172,14 @@
       try{
         const j=await res.r.json();
         const subs=j.subs||j.items||[];
-        list.innerHTML=subs.map(s=>`<li data-path="${s}">${s}</li>`).join('');
-      }catch(e){ list.innerHTML='<li>目录列举失败</li>'; }
+        list.innerHTML=subs.map(s=>{
+          const p=typeof s==='string'?s:(s.path||s.name||'');
+          const n=typeof s==='string'?s:(s.name||s.path||'');
+          return `<li data-path="${p}">${n}</li>`;
+        }).join('');
+      }catch(e){
+        list.innerHTML='<li>目录列举失败</li>';
+      }
     }
     list.onclick=e=>{ const p=e.target?.dataset?.path; if(p){ cwd=p; refresh(); } };
     $('#dirUp').onclick=()=>{
@@ -292,10 +298,16 @@
   }
 
   function applyFeatureToggles(s){
-    features=s.features||{};
+    const defaults={
+      enable_text:true, enable_data:true, enable_slides:true, enable_pdf:true,
+      enable_archive:true, enable_image:true, enable_video:true, enable_audio:true,
+      enable_ai_keywords:true, enable_move:true, enable_rename:true, enable_delete:true
+    };
+    features=Object.assign({}, defaults, s.features||{});
     const map={TEXT:'enable_text',DATA:'enable_data',SLIDES:'enable_slides',PDF:'enable_pdf',ARCHIVE:'enable_archive',IMAGE:'enable_image',VIDEO:'enable_video',AUDIO:'enable_audio'};
     Object.entries(map).forEach(([cat,key])=>{
-      const opt=$(`#category option[value="${cat}"]`); if(opt) opt.disabled = !features[key];
+      const opt=$(`#category option[value="${cat}"]`);
+      if(opt) opt.disabled = features[key]===false;
     });
     if(!features.enable_ai_keywords){
       $('#kw_len')?.setAttribute('disabled', 'disabled');
