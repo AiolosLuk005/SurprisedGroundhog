@@ -117,7 +117,7 @@ function render(){
     const td4=document.createElement("td"); td4.textContent=r.cat;
     const td5=document.createElement("td"); td5.textContent=Math.round(r.size/1024);
     const td6=document.createElement("td"); td6.textContent=r.mtime? r.mtime.toLocaleString():"";
-    const td7=document.createElement("td"); td7.textContent=r.kw||""; td7.className="kw";
+    const td7=document.createElement("td"); td7.textContent=Array.isArray(r.kw)?r.kw.join('，'):(r.kw||''); td7.className="kw";
     const move=document.createElement("input"); move.placeholder="子目录名"; move.style.width="120px";
     const rename=document.createElement("input"); rename.placeholder="新文件名含扩展名"; rename.style.width="160px";
     const td8=document.createElement("td"); td8.appendChild(move);
@@ -165,7 +165,7 @@ el("btnGenKW").onclick=async()=>{
         data = await resp.json();
       }
       if(!data.ok) throw new Error(data.err||"AI 生成失败");
-      r.kw = data.keywords || "";
+      r.kw = data.keywords || [];
       ok++;
     }catch(e){
       console.error(e); r.kw="❌ 失败"; fail++;
@@ -175,12 +175,12 @@ el("btnGenKW").onclick=async()=>{
   btn.disabled=false; btn.textContent=old;
   if(fail) alert(`完成：成功 ${ok} 个，失败 ${fail} 个`);
 };
-el("btnClearKW").onclick=()=>{ files.forEach(f=>f.kw=""); render(); };
+el("btnClearKW").onclick=()=>{ files.forEach(f=>f.kw=[]); render(); };
 
 // 导出 CSV（前端生成）
 el("btnExportCSV").onclick=()=>{
   const header = ["名称","相对路径","类型","分类","大小KB","修改时间","关键词"];
-  const rows = files.map(r=>[r.name,r.rel,r.ext,r.cat,Math.round(r.size/1024), r.mtime? r.mtime.toISOString():"", (r.kw||"").replace(/\n/g," ") ]);
+  const rows = files.map(r=>[r.name,r.rel,r.ext,r.cat,Math.round(r.size/1024), r.mtime? r.mtime.toISOString():"", (Array.isArray(r.kw)?r.kw.join('，'):r.kw||'').replace(/\n/g," ") ]);
   const csv = [header, ...rows].map(a=>a.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="surprised_groundhog_lan.csv"; a.click();

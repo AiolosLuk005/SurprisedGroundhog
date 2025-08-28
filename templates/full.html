@@ -101,6 +101,12 @@
     <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
     <input id="kwFilter" type="text" placeholder="按关键词列过滤（空格分隔多个）" style="min-width:240px;">
     <button class="btn" id="kwFilterBtn">过滤</button>
+    <select id="kwStrategy" title="关键词提取策略" style="min-width:140px;">
+      <option value="hybrid" selected>hybrid（默认）</option>
+      <option value="fast">fast（快速）</option>
+      <option value="embed">embed（语义重排）</option>
+      <option value="llm">llm（模型直生）</option>
+    </select>
     <label style="margin-left:8px;">关键词长度：</label>
     <input id="kw_len" type="number" value="50" min="10" max="200" style="width:80px;">
     <button class="btn" id="exportBtn">导出 CSV</button>
@@ -108,14 +114,8 @@
   </div>
 
   <div class="toolbar">
-    <!-- 新增：关键词策略与前缀 -->
+    <!-- 生成前缀 -->
     <input id="kwSeeds" type="text" placeholder="生成前缀（分号;分隔）" style="min-width:220px;">
-    <select id="kwStrategy" title="关键词提取策略" style="min-width:140px;">
-      <option value="hybrid" selected>hybrid（默认）</option>
-      <option value="fast">fast（快速）</option>
-      <option value="embed">embed（语义重排）</option>
-      <option value="llm">llm（模型直生）</option>
-    </select>
     <label class="pill" title="仅对关键词为空的行执行生成，已存在的不覆盖">
       <input id="kwOnlyEmpty" type="checkbox"> 仅为空生成
     </label>

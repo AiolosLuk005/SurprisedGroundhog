@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 CATEGORIES = {
     "TEXT": ["docx","doc","txt","md"],
@@ -21,5 +21,5 @@ class FileRow:
     size_bytes: int
     mtime_iso: str
     sha256: Optional[str] = None
-    keywords: Optional[str] = None
+    keywords: Optional[List[str]] = None
     previewable: bool = False

@@ -1,4 +1,4 @@
-import os, hashlib
+import os, hashlib, re
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
@@ -65,6 +65,8 @@ def _yield_row(root, fn, with_hash, cat, allowed_types, tz):
             sha256 = h.hexdigest()
         from core.state import STATE
         kw = STATE.get("keywords", {}).get(full)
+        if isinstance(kw, str):
+            kw = [w.strip() for w in re.split(r"[，,;；]", kw) if w.strip()]
         previewable = detected in ("IMAGE","VIDEO","AUDIO")
         yield FileRow(
             full_path=full, dir_path=root, name=name, ext=ext, category=detected,
