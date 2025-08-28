@@ -7,5 +7,6 @@ heavy dependency footprint.
 """
 
 from .hybrid import HybridRetriever
+from .collection import CollectionManager
 
-__all__ = ["HybridRetriever"]
+__all__ = ["HybridRetriever", "CollectionManager"]
