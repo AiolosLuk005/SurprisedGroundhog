@@ -6,4 +6,6 @@ all data in memory so that the surrounding application can evolve without a
 heavy dependency footprint.
 """
 from .hybrid import HybridRetriever, snapshot
-__all__ = ["HybridRetriever", "snapshot"]
+from .collection import CollectionManager
+
+__all__ = ["HybridRetriever", "CollectionManager", "snapshot"]
