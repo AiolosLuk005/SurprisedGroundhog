@@ -138,6 +138,7 @@ def export_csv():
         for row in iter_files(scan_dir, with_hash, category, types, recursive):
             d = asdict(row)
             d.pop("previewable", None)
+            d["keywords"] = "，".join(row.keywords or [])
             writer.writerow({k: d.get(k) for k in fieldnames})
 
     return send_file(str(filepath), as_attachment=True, download_name=filename, mimetype="text/csv")
@@ -184,7 +185,8 @@ def import_mysql():
     """
     batch, count = [], 0
     for r in iter_files(scan_dir, with_hash, category, types, recursive):
-        batch.append((r.category, r.full_path, r.dir_path, r.name, r.ext, r.size_bytes, r.mtime_iso, r.sha256, r.keywords))
+        kw = "，".join(r.keywords or [])
+        batch.append((r.category, r.full_path, r.dir_path, r.name, r.ext, r.size_bytes, r.mtime_iso, r.sha256, kw))
         if len(batch) >= 1000:
             cur.executemany(sql, batch); conn.commit(); count += len(batch); batch.clear()
     if batch:
@@ -352,9 +354,14 @@ def update_keywords():
     STATE.setdefault("keywords", {})
     saved = 0
     for u in updates:
-        p, kw = u.get("path"), (u.get("keywords") or "").strip()
+        p = u.get("path")
+        kw_raw = u.get("keywords", [])
+        if isinstance(kw_raw, str):
+            kw_list = [w.strip() for w in re.split(r"[，,;；]", kw_raw) if w.strip()]
+        else:
+            kw_list = [str(w).strip() for w in kw_raw if str(w).strip()]
         if p and is_under_allowed_roots(p):
-            STATE["keywords"][p] = kw
+            STATE["keywords"][p] = kw_list
             saved += 1
     save_state()
     return jsonify({"ok": True, "saved": saved})
@@ -438,8 +445,9 @@ def gen_keywords():
         except Exception:
             result_kw = compose_keywords(seeds, [stem], max_chars=max_chars)
 
-        out[p] = result_kw
-        STATE["keywords"][p] = result_kw
+        kw_list = [w.strip() for w in result_kw.split("，") if w.strip()]
+        out[p] = kw_list
+        STATE["keywords"][p] = kw_list
 
     save_state()
     return jsonify({"ok": True, "keywords": out})

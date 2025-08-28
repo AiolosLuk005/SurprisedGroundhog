@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from core.ollama import call_ollama_keywords, call_ollama_tags
 from core.extractors import extract_text_for_keywords
-import json, urllib.request, tempfile, os
+import json, urllib.request, tempfile, os, re
 from pathlib import Path
 from core.settings import SETTINGS
 from datetime import datetime
@@ -44,18 +44,19 @@ def keywords():
         remain = max_len - len(prefix)
         out = (prefix + text.replace("\n"," ")[:max(0, remain)]).strip(", ")
     tags = call_ollama_tags(text[:80], text)
+    kw_list = [w.strip() for w in re.split(r"[，,;；]", out or "") if w.strip()]
     STATE.setdefault("keywords_log", [])
     STATE["keywords_log"].append({
         "time": datetime.utcnow().isoformat(),
         "source": "text",
         "seeds": seeds,
         "input_preview": text[:100],
-        "keywords": out,
+        "keywords": kw_list,
         "tags": tags,
     })
     STATE["keywords_log"] = STATE["keywords_log"][-100:]
     save_state()
-    return jsonify({"ok": True, "keywords": out, "tags": tags})
+    return jsonify({"ok": True, "keywords": kw_list, "tags": tags})
 
 @bp.post("/keywords_file")
 def keywords_file():
@@ -85,15 +86,16 @@ def keywords_file():
         kw = prefix + base[:max(0, max_len - len(prefix))]
     kw = kw[:max_len]
     tags = call_ollama_tags(title, body)
+    kw_list = [w.strip() for w in re.split(r"[，,;；]", kw or "") if w.strip()]
     STATE.setdefault("keywords_log", [])
     STATE["keywords_log"].append({
         "time": datetime.utcnow().isoformat(),
         "source": "file",
         "filename": title,
         "seeds": seeds,
-        "keywords": kw,
+        "keywords": kw_list,
         "tags": tags,
     })
     STATE["keywords_log"] = STATE["keywords_log"][-100:]
     save_state()
-    return jsonify({"ok": True, "keywords": kw, "tags": tags})
+    return jsonify({"ok": True, "keywords": kw_list, "tags": tags})

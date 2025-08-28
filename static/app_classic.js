@@ -201,6 +201,7 @@
       const mtime=parseMTime(it);
       const tr=document.createElement('tr');
       const previewDisabled=(it.category==='VIDEO'&&!features.enable_video_preview)||(it.category==='AUDIO'&&!features.enable_audio_preview);
+      const kw = Array.isArray(it.keywords) ? it.keywords.join('，') : (it.keywords||'');
       tr.innerHTML=`<td><input type="checkbox" class="ck" data-path="${full}"></td>
         <td>${it.name||it.filename||''}</td>
         <td>${dir}</td>
@@ -208,7 +209,7 @@
         <td>${it.category||''}</td>
         <td>${sizeKB}</td>
         <td>${mtime}</td>
-        <td class="kw">${it.keywords||''}</td>
+        <td class="kw">${kw}</td>
         <td><input class="mv" placeholder="新完整路径" disabled></td>
         <td><input class="rn" placeholder="新文件名" disabled></td>
         <td><button class="btn btn-sm pv" ${previewDisabled?'disabled':''} data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
@@ -504,8 +505,9 @@
     const j=await res.r.json();
     if(!j.ok){ customConfirm('提取失败：'+(j.error||'' )).then(()=>{}); return; }
     targets.forEach(cb=>{
-      const kw=j.keywords?.[cb.dataset.path]||'';
-      cb.closest('tr').querySelector('.kw').textContent=kw;
+      const kw=j.keywords?.[cb.dataset.path]||[];
+      const text=Array.isArray(kw)?kw.join('，'):kw;
+      cb.closest('tr').querySelector('.kw').textContent=text;
     });
     customConfirm(`成功提取 ${Object.keys(j.keywords||{}).length} 个文件的关键词`).then(()=>{});
   }
