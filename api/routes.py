@@ -6,6 +6,7 @@ import os, io, csv, shutil, json, re, textwrap, math
 import requests
 from PIL import Image
 from send2trash import send2trash
+from services.retrieval import HybridRetriever
 
 from core.config import (
     ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT,
@@ -27,6 +28,7 @@ except Exception:  # pragma: no cover - 如果依赖缺失
     kw_fast = kw_embed = kw_llm = compose_keywords = None
 
 bp = Blueprint("full_api", __name__)
+retriever = HybridRetriever()
 
 # -------------------- 本地分类（含 zip/rar/7z ） --------------------
 CATEGORIES_LOCAL = {
@@ -509,9 +511,28 @@ def thumb():
             buf = io.BytesIO()
             im.save(buf, format="JPEG")
             buf.seek(0)
-            return send_file(buf, mimetype="image/jpeg")
+    return send_file(buf, mimetype="image/jpeg")
     except Exception:
         abort(404)
+
+# -------------------- 检索接口 --------------------
+@bp.post("/search")
+def search():
+    """Unified search endpoint.
+
+    The request body follows a subset of the Chroma API with fields such as
+    ``query``, ``k``, ``where`` and ``where_document``.
+    """
+
+    p = request.get_json() or {}
+    hits = retriever.query(
+        [p.get("query", "")],
+        k=p.get("k", 10),
+        where=p.get("where"),
+        where_document=p.get("where_document"),
+        search_type=p.get("search_type", "hybrid"),
+    )
+    return jsonify({"results": hits})
 
 # -------------------- 登录/登出 --------------------
 @bp.post("/login")
