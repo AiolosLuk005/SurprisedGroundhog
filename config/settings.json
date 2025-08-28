@@ -11,7 +11,6 @@
   "collections": {
     "default": "data/collections/default"
   },
-
   "ai": {
     "provider": "ollama",
     "url": "http://localhost:11434",
@@ -22,19 +21,15 @@
     "top_p": 0.9,
     "repeat_penalty": 1.1,
     "timeout_sec": 60,
-
     "map_chunk_chars": 2000,
     "reduce_top_n": 16,
     "reduce_top_pn": 8,
     "language": "zh"
   },
-
   "prompts": {
     "map": "你是专业的信息抽取助手。请对给定分块文本进行候选关键词提取，并严格以JSON输出。\\n\\n文档元数据：\\n- 文件名：{{filename}}\\n- 路径：{{path}}\\n- 文档类型：{{doc_type}}\\n- 语言：{{language}}\\n\\n禁止输出除JSON以外的任何字符。要求：\\n- 8~15 个关键词（term），类型包含：主题/实体/术语/行动/地点/组织；权重0~1。\\n- 3~8 个关键短语（keyphrases，2~5词）。\\n- 去除低信息量词与空词（如：报告/分析/文件/内容/章节/页面/演示/数据 等）。\\n- 同义合并、大小写与繁简统一。\\n- 附带80字内的“局部摘要”。\\n\\n输出JSON：\\n{\\n  \"language\": \"<zh|en>\",\\n  \"keywords\": [{\"term\":\"...\",\"weight\":0.00,\"type\":\"主题|实体|术语|行动|地点|组织\"}],\\n  \"keyphrases\": [{\"phrase\":\"...\",\"weight\":0.00}],\\n  \"summary\": \"...\"\\n}\\n\\n分块内容：\\n\"\"\"\\n{{chunk_text}}\\n\"\"\"",
-
     "reduce": "请将以下候选结果（JSON数组）做全局合并，输出严格的JSON（不要任何额外文本）：\\n- 合并同义词，去除空词与噪声；\\n- 覆盖主要主题；\\n- 重新计算权重并按降序；\\n- 产出 title、Top-{{top_n}} keywords、Top-{{top_pn}} keyphrases、120字内summary。\\n\\n输出JSON：\\n{\\n  \"title\": \"...\",\\n  \"language\": \"zh\",\\n  \"keywords\": [{\"term\":\"...\",\"weight\":0.00,\"type\":\"主题|实体|术语|行动|地点|组织\"}],\\n  \"keyphrases\": [{\"phrase\":\"...\",\"weight\":0.00}],\\n  \"summary\": \"...\"\\n}\\n\\n候选数组：\\n{{map_results_json}}"
   },
-
   "features": {
     "enable_text": true,
     "enable_data": true,
@@ -51,5 +46,21 @@
     "enable_image_caption": false,
     "enable_video_preview": false,
     "enable_audio_preview": false
+  },
+  "normalize": {
+    "enabled": true,
+    "artifact_dir": "data/normalized",
+    "temp_dir": "data/tmp",
+    "max_concurrency": 2,
+    "timeouts": {
+      "docx": 1800,
+      "excel": 3600,
+      "pdf": 7200
+    },
+    "on_unsupported": "fallback",
+    "dedupe": {
+      "use_sha256": true,
+      "use_size_mtime": true
+    }
   }
 }

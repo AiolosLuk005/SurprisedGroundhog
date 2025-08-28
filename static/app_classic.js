@@ -18,6 +18,7 @@
     kw:["/full/keywords"],
     clearKW:["/full/clear_keywords"],
     applyOps:["/full/apply_ops"],
+    normalize:["/full/normalize"],
     ls:["/full/ls","/ls"] // 兼容旧入口
   };
 
@@ -210,6 +211,7 @@
         <td>${sizeKB}</td>
         <td>${mtime}</td>
         <td class="kw">${kw}</td>
+        <td class="norm"></td>
         <td><input class="mv" placeholder="新完整路径" disabled></td>
         <td><input class="rn" placeholder="新文件名" disabled></td>
         <td><button class="btn btn-sm pv" ${previewDisabled?'disabled':''} data-path="${full}" data-ext="${ext}" data-cat="${it.category||''}">预览</button></td>`;
@@ -482,6 +484,42 @@
     await loadPage(currentPage);
     customConfirm(`完成 ${j.done} 项${j.errors?.length?`，失败 ${j.errors.length} 项`:''}`).then(()=>{});
   }
+  async function onNormalize(){
+    const selected=$$("#tbl tbody .ck:checked");
+    if(selected.length===0){ customConfirm("请选择要规范化的文件").then(()=>{}); return; }
+    const files=selected.map(cb=>cb.dataset.path);
+    const strategy=$("#normStrategy")?.value||"fallback";
+    toggleLoading(true,"正在规范化…");
+    const res=await firstOK(PATHS.normalize,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({files,on_unsupported:strategy})});
+    toggleLoading(false);
+    if(!res.ok){ customConfirm("规范化失败："+res.error).then(()=>{}); return; }
+    const j=await res.r.json();
+    (j.results||[]).forEach(r=>{
+      const cb=document.querySelector(`#tbl tbody .ck[data-path="${CSS.escape(r.path)}"]`);
+      if(cb){
+        const cell=cb.closest("tr").querySelector(".norm");
+        if(r.ok){ cell.textContent="✔"; }
+        else if(r.message==="unsupported"){ cell.textContent="⏭"; }
+        else{ cell.textContent="✖"; }
+        cell.title=(r.out_dir||"")+"
+"+(r.sidecar||"");
+      }
+    });
+  }
+
+  async function onImport(){
+    if(!lastQuery){ customConfirm("请先扫描"); return; }
+    const {dir,withHash,recur,cat,exts}=lastQuery;
+    const body=`dir=${qs(dir)}&hash=${withHash}&recursive=${recur}&category=${qs(cat)}&types=${qs(exts)}`;
+    toggleLoading(true,"正在导入…");
+    const res=await firstOK(PATHS.importSQL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
+    toggleLoading(false);
+    if(!res.ok){ customConfirm("导入失败："+res.error).then(()=>{}); return; }
+    const j=await res.r.json();
+    customConfirm(`已导入 ${j.inserted||0} 项`).then(()=>{});
+    if($("#autoNormalize")?.checked){ onNormalize(); }
+  }
+
 
   async function genKw(forceLLM=false){
     const selected=$$('#tbl tbody .ck:checked');
@@ -560,6 +598,8 @@
     bind('#prev','click', ()=>{ if(currentPage>1) loadPage(currentPage-1); });
     bind('#next','click', ()=>{ if(currentPage<totalPages) loadPage(currentPage+1); });
     bind('#exportBtn','click', onExport);
+    bind('#importBtn','click', onImport);
+    bind('#normalizeBtn','click', onNormalize);
     bind('#kwFilterBtn','click', applyKwFilter);
     bind('#kwFilter','keyup', (e)=>{ if(e.key==='Enter') applyKwFilter(); });
 
