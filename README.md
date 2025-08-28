@@ -137,9 +137,34 @@ python app.py
 
 ---
 
-## 常见问题  
+## 常见问题
 - **输入路径**：Windows 用 `D:\Work`，Linux/macOS 用 `/home/user/Work`  
 - **权限问题**：移动/删除操作可能需管理员权限  
 - **扩展名支持**：可在 `scanner.py` 或插件中扩展  
 
 - **关键词记录**：AI 提取结果会保存在 `state.json` 中的 `keywords` 和 `keywords_log` 字段（包含 `tags`），方便调试。
+
+---
+
+## 检索评测与快照导出
+
+### 评测
+准备两个 JSONL 文件：
+
+1. `chunks.jsonl` – 每行一个文档块，至少包含 `id` 和 `text` 字段，用于构建检索索引。
+2. `qa_pairs.jsonl` – 每行一个问答对，包含 `question` 和 `answer_ids`（相关文档块 ID 列表）。
+
+运行评测脚本计算 Recall@k 与 MRR：
+
+```bash
+python scripts/evaluate_retrieval.py --collection chunks.jsonl --pairs qa_pairs.jsonl --k 5
+```
+
+### 导出快照
+将指定集合目录中的 `*.parquet`、`*.index` 以及 `meta.json` 压缩到 `snapshots/`：
+
+```bash
+python -m services.retrieval.hybrid snapshot my_collection
+```
+
+生成的 `snapshots/my_collection.tar.gz` 可用于部署或备份。

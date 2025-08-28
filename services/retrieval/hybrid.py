@@ -1,6 +1,8 @@
 """Hybrid retrieval combining simple vector and keyword search."""
 from __future__ import annotations
 
+from pathlib import Path
+import tarfile
 from typing import Dict, Any, Iterable, List
 
 from .retriever import Hit, Retriever
@@ -47,3 +49,54 @@ class HybridRetriever(Retriever):
             else:
                 hits[h["id"]] = h
         return sorted(hits.values(), key=lambda x: x["score"], reverse=True)[:k]
+
+
+def snapshot(collection_name: str, base_dir: str = "collections", out_dir: str = "snapshots") -> Path:
+    """Compress collection files into a snapshot archive.
+
+    The function looks for ``*.parquet`` files, any ``*.index`` files and a
+    ``meta.json`` under ``base_dir/collection_name``.  Found files are packed
+    into ``out_dir/collection_name.tar.gz`` and the resulting path is returned.
+    """
+
+    src = Path(base_dir) / collection_name
+    if not src.is_dir():
+        raise FileNotFoundError(f"collection directory not found: {src}")
+
+    files = list(src.glob("*.parquet"))
+    files += list(src.glob("*.index"))
+    meta = src / "meta.json"
+    if meta.exists():
+        files.append(meta)
+    if not files:
+        raise FileNotFoundError(f"no snapshotable files in {src}")
+
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    archive = out / f"{collection_name}.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        for f in files:
+            tar.add(f, arcname=f.name)
+    return archive
+
+
+def _cli() -> None:  # pragma: no cover - convenience CLI
+    import argparse
+
+    p = argparse.ArgumentParser(description="Utility helpers for retrieval")
+    sub = p.add_subparsers(dest="cmd")
+    sp = sub.add_parser("snapshot", help="Create snapshot for a collection")
+    sp.add_argument("collection_name")
+    sp.add_argument("--base-dir", default="collections")
+    sp.add_argument("--out-dir", default="snapshots")
+    args = p.parse_args()
+
+    if args.cmd == "snapshot":
+        path = snapshot(args.collection_name, args.base_dir, args.out_dir)
+        print(path)
+    else:
+        p.print_help()
+
+
+if __name__ == "__main__":
+    _cli()
