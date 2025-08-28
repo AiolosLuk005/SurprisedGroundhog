@@ -6,7 +6,7 @@ import os, io, csv, shutil, json, re, textwrap, math
 import requests
 from PIL import Image
 from send2trash import send2trash
-from services.retrieval import HybridRetriever
+from services.retrieval import CollectionManager
 
 from core.config import (
     ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT,
@@ -28,7 +28,7 @@ except Exception:  # pragma: no cover - 如果依赖缺失
     kw_fast = kw_embed = kw_llm = compose_keywords = None
 
 bp = Blueprint("full_api", __name__)
-retriever = HybridRetriever()
+retriever = CollectionManager()
 
 # -------------------- 本地分类（含 zip/rar/7z ） --------------------
 CATEGORIES_LOCAL = {
@@ -511,7 +511,7 @@ def thumb():
             buf = io.BytesIO()
             im.save(buf, format="JPEG")
             buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg")
+        return send_file(buf, mimetype="image/jpeg")
     except Exception:
         abort(404)
 
@@ -525,7 +525,9 @@ def search():
     """
 
     p = request.get_json() or {}
+    collection = p.get("collection", "default")
     hits = retriever.query(
+        collection,
         [p.get("query", "")],
         k=p.get("k", 10),
         where=p.get("where"),
