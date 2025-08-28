@@ -69,11 +69,52 @@ python app_lan.py
   - `ppt_basic`：pptx/ppt（python-pptx）  
   - `archive_keywords`：zip/rar/7z（文件名关键词）  
 
-> 插件优先，未覆盖的类型仍由 `core/extractors.py` 兜底。  
+> 插件优先，未覆盖的类型仍由 `core/extractors.py` 兜底。
 
 ---
 
-## 使用场景  
+## 检索功能
+
+### Collection 概念与目录结构
+- 每个检索集合（collection）对应 `data/` 下的一个子目录，便于隔离不同项目数据
+- 典型结构：
+
+  ```
+  data/
+    state.json           # 全局状态
+    my_collection/       # 示例 collection
+      chunks.json        # 原始切分片段
+      faiss.index        # 向量索引（faiss-cpu）
+      whoosh/            # 关键词索引（Whoosh）
+  ```
+
+### `/search` 接口示例
+
+```bash
+curl -X POST http://127.0.0.1:5005/search \
+     -H "Content-Type: application/json" \
+     -d '{
+           "query": "groundhog", 
+           "k": 5,
+           "search_type": "hybrid"
+         }'
+```
+
+### 混合检索与过滤 DSL 使用说明
+- `search_type` 支持 `vector` / `keyword` / `hybrid`
+- `where` 针对 `metadata`，`where_document` 针对文本内容
+- 过滤 DSL 支持操作符：`$and`、`$or`、`$in`、`$gt`、`$gte`、`$lt`、`$lte`、`$regex`、`$contains`
+
+### 本地运行与评测
+```bash
+pip install -r requirements.txt
+python app.py
+# 另开终端执行上述 /search 示例进行验证
+```
+
+---
+
+## 使用场景
 
 - **个人文件整理**：快速扫描硬盘目录，导出统计表  
 - **企业内部**：LAN 模式共享扫描界面，避免敏感数据外泄  
