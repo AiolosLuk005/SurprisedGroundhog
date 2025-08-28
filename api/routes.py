@@ -524,14 +524,26 @@ def search():
     ``query``, ``k``, ``where`` and ``where_document``.
     """
 
-    p = request.get_json() or {}
-    hits = retriever.query(
+    p = request.get_json(silent=True) or {}
+    # The ``collection`` field is accepted for API compatibility but ignored.
+    _ = p.get("collection")
+
+    res = retriever.query(
         [p.get("query", "")],
         k=p.get("k", 10),
         where=p.get("where"),
         where_document=p.get("where_document"),
         search_type=p.get("search_type", "hybrid"),
     )
+
+    hits = {
+        "ids": [h["id"] for h in res],
+        "documents": [h["document"] for h in res],
+        "metadatas": [h["metadata"] for h in res],
+        "distances": [1 - float(h.get("score", 0.0)) for h in res],
+        "chunks": [h.get("chunk", {}) for h in res],
+    }
+
     return jsonify({"results": hits})
 
 # -------------------- 登录/登出 --------------------
