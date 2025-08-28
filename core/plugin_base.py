@@ -1,9 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-from typing import Protocol, Any
+from typing import Protocol, Any, List
+
+from core.chunking import Chunk
 
 class ExtractResult(dict):
-    pass
+    """Plugin extraction result following the ``Chunk`` spec.
+
+    Plugins should populate ``text`` with the raw concatenated text, ``meta``
+    with any plugin specific metadata and, most importantly, ``chunks`` which
+    is a list of :class:`core.chunking.Chunk` objects.
+    """
+
+    text: str
+    meta: dict
+    chunks: List[Chunk]
 
 class ExtractorPlugin(Protocol):
     name: str

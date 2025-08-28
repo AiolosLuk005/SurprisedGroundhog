@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Dict, Any, Iterable, List
 
 from .retriever import Hit, Retriever
-from .filters import match_where, match_where_document
+from .filters import build_where, build_where_document
 
 
 class FaissLocal(Retriever):
@@ -48,11 +48,13 @@ class FaissLocal(Retriever):
         if not query_texts:
             return []
         q_tokens = self._tokenise(query_texts[0])
+        meta_pred = build_where(where)
+        doc_pred = build_where_document(where_document)
         scores = []
         for ch in self._docs.values():
-            if not match_where(ch.get("metadata", {}), where):
+            if not meta_pred(ch.get("metadata", {})):
                 continue
-            if not match_where_document(ch.get("text", ""), where_document):
+            if not doc_pred(ch.get("text", "")):
                 continue
             t = ch.get("_tokens", set())
             if not t:

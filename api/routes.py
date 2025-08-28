@@ -6,7 +6,10 @@ import os, io, csv, shutil, json, re, textwrap, math
 import requests
 from PIL import Image
 from send2trash import send2trash
-from services.retrieval import HybridRetriever
+from services.retrieval import CollectionManager
+
+from core.extractors import extract_chunks
+from core.chunking import index_chunks
 
 from core.config import (
     ALLOWED_ROOTS, DEFAULT_SCAN_DIR, ENABLE_HASH_DEFAULT, PAGE_SIZE_DEFAULT,
@@ -28,7 +31,7 @@ except Exception:  # pragma: no cover - 如果依赖缺失
     kw_fast = kw_embed = kw_llm = compose_keywords = None
 
 bp = Blueprint("full_api", __name__)
-retriever = HybridRetriever()
+retriever = CollectionManager()
 
 # -------------------- 本地分类（含 zip/rar/7z ） --------------------
 CATEGORIES_LOCAL = {
@@ -511,7 +514,7 @@ def thumb():
             buf = io.BytesIO()
             im.save(buf, format="JPEG")
             buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg")
+        return send_file(buf, mimetype="image/jpeg")
     except Exception:
         abort(404)
 
@@ -524,11 +527,6 @@ def search():
     ``query``, ``k``, ``where`` and ``where_document``.
     """
 
-    p = request.get_json(silent=True) or {}
-    # The ``collection`` field is accepted for API compatibility but ignored.
-    _ = p.get("collection")
-
-    res = retriever.query(
         [p.get("query", "")],
         k=p.get("k", 10),
         where=p.get("where"),
@@ -545,6 +543,18 @@ def search():
     }
 
     return jsonify({"results": hits})
+
+
+# -------------------- 索引接口 --------------------
+@bp.post("/index")
+def index_file():
+    data = request.get_json(silent=True) or {}
+    path = data.get("path")
+    if not (path and is_under_allowed_roots(path)):
+        return jsonify({"ok": False, "error": "路径不合法"}), 400
+    chunks = extract_chunks(path)
+    count = index_chunks(chunks, retriever)
+    return jsonify({"ok": True, "chunks": count})
 
 # -------------------- 登录/登出 --------------------
 @bp.post("/login")
