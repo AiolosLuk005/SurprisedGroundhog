@@ -32,9 +32,9 @@
   }
 
   async function scan(){
-    var dir = ($id('dirInput') && $id('dirInput').value) || '';
+    var dir = ($id('dir') && $id('dir').value) || '';
     if(!dir){ toast('请先选择或输入目录'); return; }
-    var recursive = ($id('ckRecursive') && $id('ckRecursive').checked)?'1':'0';
+    var recursive = ($id('recur') && $id('recur').checked)?'1':'0';
     var url = `${apiBase}/scan?dir=${encodeURIComponent(dir)}&recursive=${recursive}&page=1&page_size=500&hash=0`;
     toast('正在扫描...');
     try{
@@ -54,9 +54,9 @@
     var tb = ($id('tbl') && $id('tbl').querySelector('tbody'));
     if(!tb) return;
     tb.innerHTML = '';
-    var cat = $id('selCategory').value || '';
-    var typ = $id('selType').value || '';
-    var kw = ($id('txtFilter').value || '').toLowerCase();
+    var cat = $id('category').value || '';
+    var typ = $id('types').value || '';
+    var kw = ($id('q').value || '').toLowerCase();
     lastRows.forEach(function(it){
       if(cat && it.category!==cat) return;
       if(typ && it.ext!==typ) return;
@@ -73,7 +73,7 @@
   }
 
   function fillFilters(){
-    var catSel=$id('selCategory'), typSel=$id('selType');
+    var catSel=$id('category'), typSel=$id('types');
     if(!catSel||!typSel) return;
     let cats=new Set(), typs=new Set();
     lastRows.forEach(it=>{ if(it.category) cats.add(it.category); if(it.ext) typs.add(it.ext); });
@@ -82,25 +82,25 @@
   }
 
   async function exportCsv(){
-    var dir = ($id('dirInput') && $id('dirInput').value) || '';
+    var dir = ($id('dir') && $id('dir').value) || '';
     if(!dir){ toast('请先选择或输入目录'); return; }
-    var recursive = ($id('ckRecursive') && $id('ckRecursive').checked)?'1':'0';
+    var recursive = ($id('recur') && $id('recur').checked)?'1':'0';
     var url = `${apiBase}/export_csv?dir=${encodeURIComponent(dir)}&recursive=${recursive}`;
     window.location.href=url;
   }
 
   async function pickDir(){
-    var input=$id('dirInput'); if(!input) return;
+    var input=$id('dir'); if(!input) return;
     var v=prompt('请输入目录绝对路径', input.value||''); if(v!=null){ input.value=v; }
   }
 
   document.addEventListener('DOMContentLoaded', async function(){
     await detectApi();
-    $id('btnPick')?.addEventListener('click', pickDir);
-    $id('btnScan')?.addEventListener('click', scan);
-    $id('btnExport')?.addEventListener('click', exportCsv);
-    $id('selCategory')?.addEventListener('change', renderTable);
-    $id('selType')?.addEventListener('change', renderTable);
-    $id('txtFilter')?.addEventListener('input', renderTable);
+    $id('pickDir')?.addEventListener('click', pickDir);
+    $id('scanBtn')?.addEventListener('click', scan);
+    $id('exportBtn')?.addEventListener('click', exportCsv);
+    $id('category')?.addEventListener('change', renderTable);
+    $id('types')?.addEventListener('change', renderTable);
+    $id('q')?.addEventListener('input', renderTable);
   });
 })();
