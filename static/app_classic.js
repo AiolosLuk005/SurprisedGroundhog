@@ -513,8 +513,7 @@
         if(r.ok){ cell.textContent="✔"; }
         else if(r.message==="unsupported"){ cell.textContent="⏭"; }
         else{ cell.textContent="✖"; }
-        cell.title=(r.out_dir||"")+"
-"+(r.sidecar||"");
+        cell.title=(r.out_dir||"")+"\n"+(r.sidecar||"");
       }
     });
   }
