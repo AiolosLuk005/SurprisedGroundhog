@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Surprised Groundhog · V1.01</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
   <style>
     /* 目录选择弹窗 */
@@ -51,7 +51,7 @@
 <body data-user="{{ current_user or '' }}">
   <div class="topbar">
     <h2 class="brand">Surprised Groundhog · V1.01</h2>
-    <img class="logo" src="/static/logo.png" alt="logo">
+    <img class="logo" src="{{ url_for('static', filename='logo.png') }}" alt="logo">
     <!-- 用户工具挂载区：设置 / 登录 / 登出 / 用户名 -->
     <div id="userTools" style="margin-left:auto; display:flex; align-items:center; gap:8px;"></div>
   </div>
@@ -340,6 +340,6 @@
   </div>
 
   <!-- 带版本号避免缓存 -->
-  <script src="/static/app_classic.js?v=20250821a"></script>
+  <script src="{{ url_for('static', filename='app_classic.js') }}?v=20250821a"></script>
 </body>
 </html>
