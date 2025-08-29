@@ -1,3 +1,4 @@
+body{max-width:1200px;margin:0 auto;overflow-x:hidden}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #eee}
 .topbar-left{display:flex;align-items:center;gap:8px}
 #userTools{display:flex;align-items:center;gap:8px}
