@@ -57,13 +57,13 @@ def create_app() -> Flask:
             if "user" not in session:
                 if request.is_json or request.method == "POST":
                     return jsonify({"ok": False, "error": "未登录"}), 401
+    @app.before_request
     def _only_local_for_full():
         """
         只允许本机访问 /full/* ，防止同网段的人通过你的电脑操作文件。
         如果你以后需要局域网可用，可以放开这里或者在 routes 里拆分只读/只写接口。
         """
-        p = (request.path or "/")
-        if p.startswith("/full"):
+        if request.path.startswith("/full"):
             ra = (request.remote_addr or "")
             if ra not in ("127.0.0.1", "::1"):
                 abort(403)
