@@ -60,7 +60,7 @@ python app.py
 python app_lan.py
 ```
 - 默认仅提供扫描 + AI 接口，文件操作受限  
-- `/full/*` 路由仅允许本机访问（127.0.0.1 / ::1），确保外部无法操作本机文件  
+- `/full/*` 路由默认仅允许本机访问（127.0.0.1 / ::1），可在 `config/settings.json` 中将 `allow_remote_full` 设为 `true` 放开限制
 
 ---
 

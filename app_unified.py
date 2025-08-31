@@ -59,12 +59,18 @@ def create_app() -> Flask:
                     return jsonify({"ok": False, "error": "未登录"}), 401
     @app.before_request
     def _only_local_for_full():
-        """
-        只允许本机访问 /full/* ，防止同网段的人通过你的电脑操作文件。
-        如果你以后需要局域网可用，可以放开这里或者在 routes 里拆分只读/只写接口。
+        """限制 /full/* 路由的访问来源。
+
+        默认仅允许本机访问，以防同网段的其他设备操作你的文件。
+        如果在 ``config/settings.json`` 中将 ``allow_remote_full`` 设为 ``true``，
+        则放开该限制。
         """
         if request.path.startswith("/full"):
-            ra = (request.remote_addr or "")
+            # 允许通过配置放开限制
+            if SETTINGS.get("allow_remote_full"):
+                return None
+
+            ra = request.remote_addr or ""
             if ra not in ("127.0.0.1", "::1"):
                 abort(403)
         return None
