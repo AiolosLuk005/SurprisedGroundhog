@@ -7,6 +7,7 @@
   "permissions": {
     "admin": 1
   },
+  "allow_remote_full": false,
   "theme": "system",
   "collections": {
     "default": "data/collections/default"
