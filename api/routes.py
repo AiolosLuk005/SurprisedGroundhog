@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, send_file, send_
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-import os, io, csv, shutil, json, re, textwrap, math
+import os, io, csv, shutil, json, re, textwrap, math, tempfile
 import requests
 from PIL import Image
 from send2trash import send2trash
@@ -478,6 +478,48 @@ def gen_keywords():
         STATE["keywords"][p] = kw_list
 
     save_state()
+    return jsonify({"ok": True, "keywords": out})
+
+# -------------------- 图片关键词 --------------------
+@bp.post("/keywords_image")
+def keywords_image():
+    """Generate image keywords using the WD14 plugin."""
+    try:
+        from plugins.image_keywords_wd14 import ImageKeywordsWD14
+    except Exception as e:  # pragma: no cover - plugin import may fail
+        return jsonify({"ok": False, "error": f"plugin load failed: {e}"}), 500
+    extractor = ImageKeywordsWD14()
+
+    upload = request.files.get("file")
+    if upload:
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                upload.save(tmp)
+                tmp_path = tmp.name
+            res = extractor.extract(tmp_path)
+            tags = res.meta.get("tags", [])
+            return jsonify({"ok": True, "keywords": tags})
+        except Exception as e:  # pragma: no cover - runtime failures
+            return jsonify({"ok": False, "error": str(e)}), 500
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+    data = request.get_json(silent=True) or {}
+    paths = data.get("paths", [])
+    out = {}
+    for p in paths:
+        if not (p and is_under_allowed_roots(p) and os.path.isfile(p)):
+            continue
+        try:
+            res = extractor.extract(p)
+            out[p] = res.meta.get("tags", [])
+        except Exception:
+            out[p] = []
     return jsonify({"ok": True, "keywords": out})
 
 # -------------------- 文件操作 --------------------
