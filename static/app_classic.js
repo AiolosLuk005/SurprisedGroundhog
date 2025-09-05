@@ -16,6 +16,7 @@
     exportCSV:["/full/export_csv"],
     importSQL:["/full/import_mysql"],
     kw:["/full/keywords"],
+    imgKw:["/full/keywords_image","/api/keywords_image"],
     clearKW:["/full/clear_keywords"],
     applyOps:["/full/apply_ops"],
     normalize:["/full/normalize"],
@@ -317,6 +318,7 @@
       $('#genKwBtn')?.setAttribute('disabled', 'disabled');
       $('#aiRefineBtn')?.setAttribute('disabled', 'disabled');
       $('#clearKwBtn')?.setAttribute('disabled', 'disabled');
+      $('#btnImgKW')?.setAttribute('disabled', 'disabled');
     }
     if(!features.enable_move){ $('#applyMoveBtn').disabled=true; }
     if(!features.enable_rename){ $('#applyRenameBtn').disabled=true; }
@@ -561,6 +563,25 @@
     customConfirm(`成功提取 ${Object.keys(j.keywords||{}).length} 个文件的关键词`).then(()=>{});
   }
 
+  async function genImgKw(){
+    const selected=$$('#tbl tbody .ck:checked');
+    if(selected.length===0){ customConfirm('请先选择图像文件').then(()=>{}); return; }
+    const paths=selected.map(cb=>cb.dataset.path).filter(Boolean);
+    if(!paths.length){ customConfirm('未找到文件路径').then(()=>{}); return; }
+    toggleLoading(true,'正在提取图片关键词…');
+    const res=await firstOK(PATHS.imgKw,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths})});
+    toggleLoading(false);
+    if(!res.ok){ customConfirm('提取失败：'+res.error).then(()=>{}); return; }
+    const j=await res.r.json();
+    if(!j.ok){ customConfirm('提取失败：'+(j.error||'')).then(()=>{}); return; }
+    selected.forEach(cb=>{
+      const kw=j.keywords?.[cb.dataset.path]||[];
+      const cell=cb.closest('tr')?.querySelector('.kw');
+      if(cell) cell.textContent=Array.isArray(kw)?kw.join('，'):kw;
+    });
+    customConfirm(`提取完成：${Object.keys(j.keywords||{}).length} 个文件`).then(()=>{});
+  }
+
   async function onClearKw(){
     const selected=$$('#tbl tbody .ck:checked');
     if(selected.length===0){ customConfirm('请选择要清除关键词的文件').then(()=>{}); return; }
@@ -623,6 +644,7 @@
     bind('#genKwBtn','click', ()=>genKw(false));
     bind('#aiRefineBtn','click', ()=>genKw(true));
     bind('#clearKwBtn','click', onClearKw);
+    bind('#btnImgKW','click', genImgKw);
     bind('#applyMoveBtn','click',()=>{
       if(opMode!=='move'){
         setOpMode('move');
