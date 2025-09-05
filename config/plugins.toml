@@ -4,5 +4,7 @@ enabled = [
   "excel_basic",
   "ppt_basic",
   "pdf_basic",
+  "image_keywords_wd14",
+  "image_basic",
   "text_basic"
 ]

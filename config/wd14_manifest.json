@@ -1,0 +1,33 @@
+{
+  "model_family": "wd14",
+  "default_variant": "vit-v3",
+  "files": [
+    {
+      "filename": "wd-vit-tagger-v3.onnx",
+      "path": "D:/AI/models/wd14/wd-vit-tagger-v3.onnx",
+      "size_bytes": 0,
+      "sha256": "",
+      "source": "copy",
+      "version": "v3"
+    },
+    {
+      "filename": "tags.txt",
+      "path": "D:/AI/models/wd14/tags.txt",
+      "size_bytes": 0,
+      "sha256": "",
+      "source": "copy",
+      "version": "v3"
+    },
+    {
+      "filename": "char_tags.txt",
+      "path": "D:/AI/models/wd14/char_tags.txt",
+      "size_bytes": 0,
+      "sha256": "",
+      "source": "copy",
+      "version": "v3"
+    }
+  ],
+  "updated_at": "2024-01-01",
+  "notes": "vit-only boot; convnext/swin optional."
+}
+
