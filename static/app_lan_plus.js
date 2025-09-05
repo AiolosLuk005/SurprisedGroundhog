@@ -175,6 +175,31 @@ el("btnGenKW").onclick=async()=>{
   btn.disabled=false; btn.textContent=old;
   if(fail) alert(`完成：成功 ${ok} 个，失败 ${fail} 个`);
 };
+el("btnImgKW").onclick=async()=>{
+  const selected = [...document.querySelectorAll('tbody input[type="checkbox"]:checked')].map(cb=>parseInt(cb.dataset.idx));
+  if(!selected.length){ alert("请先勾选需要生成关键词的文件"); return; }
+  const btn = el("btnImgKW"); const old = btn.textContent; btn.disabled=true; btn.textContent="生成中…";
+  let ok=0, fail=0;
+  for(const idx of selected){
+    const r = files[idx]; const row = $tbl.querySelector(`input[data-idx="${idx}"]`)?.closest("tr");
+    if(row) row.querySelector(".kw").textContent = "⏳ 生成中...";
+    try{
+      const form = new FormData();
+      form.append("file", r.file, r.name);
+      const resp = await fetch("/api/keywords_image",{ method:"POST", body: form });
+      if(!resp.ok) throw new Error("HTTP "+resp.status);
+      const data = await resp.json();
+      if(!data.ok) throw new Error(data.error||"提取失败");
+      r.kw = data.keywords || [];
+      ok++;
+    }catch(e){
+      console.error(e); r.kw="❌ 失败"; fail++;
+    }
+    render();
+  }
+  btn.disabled=false; btn.textContent=old;
+  if(fail) alert(`完成：成功 ${ok} 个，失败 ${fail} 个`);
+};
 el("btnClearKW").onclick=()=>{ files.forEach(f=>f.kw=[]); render(); };
 
 // 导出 CSV（前端生成）
