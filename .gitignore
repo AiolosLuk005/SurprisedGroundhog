@@ -16,3 +16,19 @@ output/
 
 # 忽略自动生成的文件
 state.json
+
+# WD14 models (external or symlink targets) — never commit large weights
+/models/
+/models/**
+
+# If you decide to place models under project for any reason
+**/*.onnx
+**/wd14/**
+
+# Caches & local DB
+/data/*.sqlite
+/data/**/cache.sqlite
+/data/wd14_cache.sqlite
+
+# Manifests may be committed, BUT not the weights
+!config/wd14_manifest.json

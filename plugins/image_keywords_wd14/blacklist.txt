@@ -1,0 +1,3 @@
+jpegartifact
+cropped
+signature

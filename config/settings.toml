@@ -1,0 +1,33 @@
+[wd14.model]
+path     = "D:/AI/models/wd14/wd-vit-tagger-v3.onnx"
+taglist  = "D:/AI/models/wd14/tags.txt"
+charlist = "D:/AI/models/wd14/char_tags.txt"
+variant  = "vit-v3"
+provider   = "auto"
+batch_size = 8
+
+[wd14.threshold]
+general   = 0.35
+character = 0.85
+
+[wd14.output]
+replace_underscore = true
+trailing_comma     = true
+topk               = 128
+
+[wd14.filter]
+blacklist_file = "plugins/image_keywords_wd14/blacklist.txt"
+
+[wd14.translation]
+enable   = true
+dict     = "plugins/image_keywords_wd14/zh_dictionary.json"
+fallback = "ollama"
+cache_kv = "data/keyword_translate_cache.sqlite"
+
+[wd14.caching]
+store = "data/wd14_cache.sqlite"
+
+[wd14.manifest]
+file = "config/wd14_manifest.json"
+enforce_integrity = true
+
