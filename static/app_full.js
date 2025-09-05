@@ -14,7 +14,13 @@
   }
   function fmtTime(ts){
     if(!ts) return '';
-    try{ return new Date(ts*1000).toLocaleString(); }catch(e){ return ''; }
+    try{
+      if(typeof ts==='number'){
+        if(ts>1e12) return new Date(ts).toLocaleString();
+        return new Date(ts*1000).toLocaleString();
+      }
+      return new Date(ts).toLocaleString();
+    }catch(e){ return ''; }
   }
 
   let lastRows = [];
@@ -54,22 +60,53 @@
     var tb = ($id('tbl') && $id('tbl').querySelector('tbody'));
     if(!tb) return;
     tb.innerHTML = '';
-    var cat = $id('category').value || '';
-    var typ = $id('types').value || '';
-    var kw = ($id('q').value || '').toLowerCase();
+    var cat = ($id('category') && $id('category').value) || '';
+    var typ = ($id('types') && $id('types').value) || '';
+    var kw = ($id('q') && $id('q').value || '').toLowerCase();
     lastRows.forEach(function(it){
+      var ext = (it.ext||'').toLowerCase();
       if(cat && it.category!==cat) return;
-      if(typ && it.ext!==typ) return;
-      if(kw && it.name.toLowerCase().indexOf(kw)<0) return;
+      if(typ && ext!==typ) return;
+      if(kw && (it.name||'').toLowerCase().indexOf(kw)<0) return;
       var tr = document.createElement('tr');
+      var tdSel=document.createElement('td');
+      var cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.path=it.full_path||''; tdSel.appendChild(cb);
+      tr.appendChild(tdSel);
       function td(t){ var d=document.createElement('td'); d.textContent=t||''; return d; }
       tr.appendChild(td(it.name));
-      tr.appendChild(td(it.dir));
-      tr.appendChild(td(it.ext));
-      tr.appendChild(td(fmtSize(it.size)));
-      tr.appendChild(td(fmtTime(it.mtime)));
+      tr.appendChild(td(it.dir_path || it.dir || ''));
+      tr.appendChild(td(ext));
+      tr.appendChild(td(it.category || ''));
+      tr.appendChild(td(fmtSize(it.size_bytes || it.size)));
+      tr.appendChild(td(fmtTime(it.mtime_iso || it.mtime)));
+      var kwTd = td(Array.isArray(it.keywords)? it.keywords.join('，') : (it.keywords || '')); kwTd.className='kw'; tr.appendChild(kwTd);
       tb.appendChild(tr);
     });
+  }
+
+  async function genImgKw(){
+    var cbs = Array.from(document.querySelectorAll('#tbl tbody input[type="checkbox"]:checked'));
+    if(cbs.length===0){ toast('请先选择图像文件'); return; }
+    var paths = cbs.map(cb=>cb.dataset.path).filter(Boolean);
+    if(!paths.length){ toast('未找到文件路径','error'); return; }
+    toast('正在提取图片关键词...');
+    try{
+      const r = await fetch(`${apiBase}/keywords_image`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({paths})
+      });
+      const j = await r.json();
+      if(!j || j.ok===false){ toast('提取失败：'+(j&&j.error||''),'error'); return; }
+      cbs.forEach(cb=>{
+        const kw=j.keywords?.[cb.dataset.path]||[];
+        const cell=cb.closest('tr')?.querySelector('.kw');
+        if(cell) cell.textContent = Array.isArray(kw)? kw.join('，'):kw;
+      });
+      toast(`提取完成：${Object.keys(j.keywords||{}).length} 个文件`);
+    }catch(e){
+      toast('提取异常：'+e,'error');
+    }
   }
 
   function fillFilters(){
@@ -102,5 +139,6 @@
     $id('category')?.addEventListener('change', renderTable);
     $id('types')?.addEventListener('change', renderTable);
     $id('q')?.addEventListener('input', renderTable);
+    $id('btnImgKW')?.addEventListener('click', genImgKw);
   });
 })();
