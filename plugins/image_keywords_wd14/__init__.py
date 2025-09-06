@@ -111,7 +111,13 @@ class ImageKeywordsWD14:
         elif provider == "cuda":
             providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
-        import onnxruntime as ort  # type: ignore
+        try:
+            import onnxruntime as ort  # type: ignore
+        except ModuleNotFoundError as e:  # pragma: no cover - runtime dependency
+            raise ModuleNotFoundError(
+                "onnxruntime is required for image keyword extraction. "
+                "Install it with 'pip install onnxruntime'."
+            ) from e
 
         self._session = ort.InferenceSession(model_path, providers=providers)
 
