@@ -98,12 +98,22 @@
       });
       const j = await r.json();
       if(!j || j.ok===false){ toast('提取失败：'+(j&&j.error||''),'error'); return; }
+      let okCnt=0, failCnt=0;
       cbs.forEach(cb=>{
-        const kw=j.keywords?.[cb.dataset.path]||[];
+        const info=j.keywords?.[cb.dataset.path];
         const cell=cb.closest('tr')?.querySelector('.kw');
-        if(cell) cell.textContent = Array.isArray(kw)? kw.join('，'):kw;
+        if(!info){ return; }
+        if(info.ok===false){
+          failCnt++;
+          if(cell) cell.textContent='';
+          toast('提取失败：'+(info.error||''),'error');
+        }else{
+          okCnt++;
+          const kw=info.keywords||[];
+          if(cell) cell.textContent = Array.isArray(kw)? kw.join('，'):kw;
+        }
       });
-      toast(`提取完成：${Object.keys(j.keywords||{}).length} 个文件`);
+      toast(`提取完成：${okCnt} 个文件${failCnt? '，失败 '+failCnt+' 个':''}`);
     }catch(e){
       toast('提取异常：'+e,'error');
     }

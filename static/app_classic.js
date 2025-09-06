@@ -574,12 +574,22 @@
     if(!res.ok){ customConfirm('提取失败：'+res.error).then(()=>{}); return; }
     const j=await res.r.json();
     if(!j.ok){ customConfirm('提取失败：'+(j.error||'')).then(()=>{}); return; }
+    let okCnt=0; const fails=[];
     selected.forEach(cb=>{
-      const kw=j.keywords?.[cb.dataset.path]||[];
+      const info=j.keywords?.[cb.dataset.path];
       const cell=cb.closest('tr')?.querySelector('.kw');
-      if(cell) cell.textContent=Array.isArray(kw)?kw.join('，'):kw;
+      if(!info) return;
+      if(info.ok===false){
+        fails.push(info.error||'');
+        if(cell) cell.textContent='';
+      }else{
+        okCnt++;
+        const kw=info.keywords||[];
+        if(cell) cell.textContent=Array.isArray(kw)?kw.join('，'):kw;
+      }
     });
-    customConfirm(`提取完成：${Object.keys(j.keywords||{}).length} 个文件`).then(()=>{});
+    const failMsg=fails.length?`，失败 ${fails.length} 个：${fails.join('；')}`:'';
+    customConfirm(`提取完成：${okCnt} 个文件${failMsg}`).then(()=>{});
   }
 
   async function onClearKw(){
