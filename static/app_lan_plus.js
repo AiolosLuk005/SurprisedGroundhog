@@ -168,7 +168,9 @@ el("btnGenKW").onclick=async()=>{
       r.kw = data.keywords || [];
       ok++;
     }catch(e){
-      console.error(e); r.kw="❌ 失败"; fail++;
+      console.error(e);
+      r.kw=`❌ 失败: ${e.message||e}`;
+      fail++;
     }
     render();
   }
@@ -193,7 +195,9 @@ el("btnImgKW").onclick=async()=>{
       r.kw = data.keywords || [];
       ok++;
     }catch(e){
-      console.error(e); r.kw="❌ 失败"; fail++;
+      console.error(e);
+      r.kw=`❌ 失败: ${e.message||e}`;
+      fail++;
     }
     render();
   }
