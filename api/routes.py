@@ -498,10 +498,11 @@ def keywords_image():
                 upload.save(tmp)
                 tmp_path = tmp.name
             res = extractor.extract(tmp_path)
-            err = res.meta.get("error")
+            meta = res.get("meta", {})
+            err = meta.get("error")
             if err:
                 return jsonify({"ok": False, "error": err})
-            tags = res.meta.get("tags", [])
+            tags = meta.get("tags", [])
             return jsonify({"ok": True, "keywords": tags})
         except Exception as e:  # pragma: no cover - runtime failures
             return jsonify({"ok": False, "error": str(e)}), 500
@@ -520,11 +521,12 @@ def keywords_image():
             continue
         try:
             res = extractor.extract(p)
-            err = res.meta.get("error")
+            meta = res.get("meta", {})
+            err = meta.get("error")
             if err:
                 out[p] = {"ok": False, "error": err}
             else:
-                out[p] = {"ok": True, "keywords": res.meta.get("tags", [])}
+                out[p] = {"ok": True, "keywords": meta.get("tags", [])}
         except Exception as e:
             out[p] = {"ok": False, "error": str(e)}
     return jsonify({"ok": True, "keywords": out})
