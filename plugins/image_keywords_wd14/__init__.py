@@ -19,6 +19,9 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import tomllib  # Python 3.11+
@@ -99,7 +102,9 @@ class ImageKeywordsWD14:
 
     # ------------------------------------------------------------------
     def _ensure_model(self) -> None:
+        logger.debug("Ensuring WD14 model is loaded")
         if self._session is not None:
+            logger.debug("Model session already initialized")
             return
 
         model_cfg = self._cfg.get("model", {})
@@ -111,15 +116,18 @@ class ImageKeywordsWD14:
         elif provider == "cuda":
             providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
+        logger.info("Loading WD14 model from %s with providers %s", model_path, providers)
         try:
             import onnxruntime as ort  # type: ignore
         except ModuleNotFoundError as e:  # pragma: no cover - runtime dependency
+            logger.error("onnxruntime is required but missing: %s", e)
             raise ModuleNotFoundError(
                 "onnxruntime is required for image keyword extraction. "
                 "Install it with 'pip install onnxruntime'."
             ) from e
 
         self._session = ort.InferenceSession(model_path, providers=providers)
+        logger.info("WD14 model loaded successfully")
 
         tag_path = model_cfg.get("taglist", "")
         char_path = model_cfg.get("charlist", "")
@@ -178,8 +186,10 @@ class ImageKeywordsWD14:
     def _infer_tags(self, img: Image.Image) -> List[str]:
         import numpy as np  # noqa: F401
 
+        logger.debug("Running tag inference")
         self._ensure_model()
         arr = self._preprocess(img)
+        logger.debug("Image preprocessed: %s", getattr(arr, "shape", "unknown"))
         outputs = self._session.run(None, {self._session.get_inputs()[0].name: arr})[0][0]
 
         g_thr = self._cfg.get("threshold", {}).get("general", 0.35)
@@ -206,13 +216,16 @@ class ImageKeywordsWD14:
         if self._cfg.get("translation", {}).get("enable", False):
             tags = [self._dict.get(t, t) for t in tags]
 
+        logger.debug("Inference produced %d tags", len(tags))
         return tags
 
     # ------------------------------------------------------------------
     def extract(self, path: str, max_chars: int = 4000) -> ExtractResult:
+        logger.info("Extracting image keywords from %s", path)
         meta = {"handler": self.name}
 
         if self._manifest_error:
+            logger.error("Manifest error: %s", self._manifest_error)
             meta["error"] = self._manifest_error
             chunk = Chunk(id=f"{path}#0", doc_id=path, text="", metadata=meta)
             return ExtractResult(text="", meta=meta, chunks=[chunk])
@@ -229,6 +242,7 @@ class ImageKeywordsWD14:
             )
             cached = self._cache_get(key)
             if cached is not None:
+                logger.debug("Using cached tags for %s", path)
                 tags = cached
             else:
                 img = Image.open(io.BytesIO(img_bytes))
@@ -240,10 +254,15 @@ class ImageKeywordsWD14:
                 text += ","
 
             meta["tags"] = tags
+            if not tags:
+                logger.warning("No tags extracted for %s", path)
+            else:
+                logger.info("Extracted %d tags for %s", len(tags), path)
             chunk = Chunk(id=f"{path}#0", doc_id=path, text=text, metadata=meta)
             return ExtractResult(text=text, meta=meta, chunks=[chunk])
         except Exception as e:  # pragma: no cover - robustness
             meta["error"] = str(e)
+            logger.error("Failed to extract tags for %s: %s", path, e)
             chunk = Chunk(id=f"{path}#0", doc_id=path, text="", metadata=meta)
             return ExtractResult(text="", meta=meta, chunks=[chunk])
 

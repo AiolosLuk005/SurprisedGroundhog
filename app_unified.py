@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import logging
 from urllib.parse import urlencode
 from flask import Flask, request, abort, redirect, jsonify, session
 from core.settings import SETTINGS
@@ -8,8 +9,22 @@ from core.settings import SETTINGS
 from api.ai import bp as ai_bp            # /api/ai/*
 from api.routes import bp as full_bp      # 我们将把它注册到 /full/*
 
-# 端口配置
-from core.config import PORT
+# 端口配置及日志配置
+from core.config import PORT, LOG_LEVEL, LOG_FILE
+
+
+def _setup_logging() -> None:
+    handlers = [logging.StreamHandler()]
+    if LOG_FILE:
+        handlers.append(logging.FileHandler(LOG_FILE, encoding="utf-8"))
+    logging.basicConfig(
+        level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=handlers,
+    )
+
+
+_setup_logging()
 
 # 旧版前端可能直接请求根路径接口，这里统一做 307 → /full/* 的兼容重写
 ROOT_API_PATHS = {

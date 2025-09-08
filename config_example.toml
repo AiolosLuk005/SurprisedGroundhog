@@ -11,3 +11,9 @@ user = "root"
 password = "your_password"
 database = "groundhog"
 trash_dir = ""
+
+[logging]
+# 日志级别: DEBUG, INFO, WARNING, ERROR
+level = "INFO"
+# 为空则输出到控制台，否则输出到指定文件
+file = ""
