@@ -6,6 +6,7 @@ import os, io, csv, shutil, json, re, textwrap, math, tempfile
 import requests
 from PIL import Image
 from send2trash import send2trash
+import logging
 from services.retrieval import CollectionManager
 
 from core.extractors import extract_chunks
@@ -33,6 +34,8 @@ except Exception:  # pragma: no cover - 如果依赖缺失
 
 bp = Blueprint("full_api", __name__)
 retriever = CollectionManager()
+
+logger = logging.getLogger(__name__)
 
 # -------------------- 本地分类（含 zip/rar/7z ） --------------------
 CATEGORIES_LOCAL = {
@@ -484,9 +487,11 @@ def gen_keywords():
 @bp.post("/keywords_image")
 def keywords_image():
     """Generate image keywords using the WD14 plugin."""
+    logger.info("/keywords_image called")
     try:
         from plugins.image_keywords_wd14 import ImageKeywordsWD14
     except Exception as e:  # pragma: no cover - plugin import may fail
+        logger.error("plugin load failed: %s", e)
         return jsonify({"ok": False, "error": f"plugin load failed: {e}"}), 500
     extractor = ImageKeywordsWD14()
 
@@ -497,14 +502,18 @@ def keywords_image():
             with tempfile.NamedTemporaryFile(delete=False) as tmp:
                 upload.save(tmp)
                 tmp_path = tmp.name
+            logger.debug("Uploaded file saved to %s", tmp_path)
             res = extractor.extract(tmp_path)
             meta = res.get("meta", {})
             err = meta.get("error")
             if err:
+                logger.error("Extraction error for %s: %s", tmp_path, err)
                 return jsonify({"ok": False, "error": err})
             tags = meta.get("tags", [])
+            logger.info("Extracted %d tags for uploaded file", len(tags))
             return jsonify({"ok": True, "keywords": tags})
         except Exception as e:  # pragma: no cover - runtime failures
+            logger.error("Runtime failure for uploaded file: %s", e)
             return jsonify({"ok": False, "error": str(e)}), 500
         finally:
             if tmp_path and os.path.exists(tmp_path):
@@ -515,6 +524,7 @@ def keywords_image():
 
     data = request.get_json(silent=True) or {}
     paths = data.get("paths", [])
+    logger.debug("Processing paths: %s", paths)
     out = {}
     for p in paths:
         if not (p and is_under_allowed_roots(p) and os.path.isfile(p)):
@@ -524,10 +534,14 @@ def keywords_image():
             meta = res.get("meta", {})
             err = meta.get("error")
             if err:
+                logger.error("Extraction error for %s: %s", p, err)
                 out[p] = {"ok": False, "error": err}
             else:
-                out[p] = {"ok": True, "keywords": meta.get("tags", [])}
+                tags = meta.get("tags", [])
+                logger.info("Extracted %d tags for %s", len(tags), p)
+                out[p] = {"ok": True, "keywords": tags}
         except Exception as e:
+            logger.error("Runtime failure for %s: %s", p, e)
             out[p] = {"ok": False, "error": str(e)}
     return jsonify({"ok": True, "keywords": out})
 

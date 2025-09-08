@@ -22,3 +22,6 @@ OLLAMA = CFG.get("ollama", {"enable": False, "model":"gpt-oss:20b", "timeout_sec
 MYSQL_CFG = CFG.get("mysql", {"enable": False})
 MYSQL_ENABLED = bool(MYSQL_CFG.get("enable"))
 TRASH_DIR = CFG.get("trash_dir", "")
+LOGGING_CFG = CFG.get("logging", {})
+LOG_LEVEL = LOGGING_CFG.get("level", "INFO")
+LOG_FILE = LOGGING_CFG.get("file", "")
