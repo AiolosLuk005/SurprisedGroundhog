@@ -32,3 +32,17 @@ state.json
 
 # Manifests may be committed, BUT not the weights
 !config/wd14_manifest.json
+
+# 忽略临时数据文件
+data/normalized/
+
+# 忽略所有 .onnx 文件
+**/*.onnx
+
+# 忽略 wd14 目录下的所有内容
+**/wd14/**
+
+# 取消忽略特定的文件，让 Git 能够追踪它们
+!**/wd14/
+!**/wd14/models/wd-vit-tagger-v3.onnx
+!**/wd14/models/wd-vit-tagger-v3.csv
