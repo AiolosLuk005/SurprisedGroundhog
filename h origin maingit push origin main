@@ -1,0 +1,257 @@
+[33mcommit 132ce0753213d312743243538a2bb36d47218050[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Sat Aug 23 09:12:59 2025 +0800
+
+    feat: refine batch move path and wrap table cells (#31)
+
+[33mcommit 32575240eab208fe97e51dff3dbab983ca7a6fd3[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Sat Aug 23 08:04:10 2025 +0800
+
+    feat: add state.json to gitignore
+
+[33mcommit 6000d7765ec2bedd82b078697c6678dfa5a4475e[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Sat Aug 23 07:56:05 2025 +0800
+
+    feat: add batch file operations (#30)
+
+[33mcommit 2255a2c67e60bfa8c4e368aa574aad013f501ca9[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Fri Aug 22 16:15:17 2025 +0800
+
+    feat: log AI keyword results (#29)
+
+[33mcommit 60f850335cc8fd829717d2d44f77778763f93eba[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Fri Aug 22 14:55:40 2025 +0800
+
+    chore: improve table layout (#28)
+
+[33mcommit 21578889d515abd120d656ff834d5709e55a358e[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Fri Aug 22 01:25:46 2025 +0800
+
+    Add fixed-width table styling (#27)
+
+[33mcommit e3d43bb5909123a8ebbe14526f0fe52c23df96b2[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Thu Aug 21 20:18:18 2025 +0800
+
+    Add missing dependencies (#26)
+
+[33mcommit c232876e0551f97ac5e6e322fa780457ada858ff[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Thu Aug 21 14:12:29 2025 +0800
+
+    提交你的修改
+
+[33mcommit 73708b8d308b2e8590d9b3995098ba52b2bf844f[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Thu Aug 21 11:55:46 2025 +0800
+
+    Make keyword filter and length input IDs unique (#25)
+
+[33mcommit df275a85773874941d9925d8adc033dd8cf3cf12[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Thu Aug 21 11:53:25 2025 +0800
+
+    Include keyword cell in server-side row template (#24)
+
+[33mcommit 1f5965808345d6c4b4faedf67be0e8b8fdd02525[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Thu Aug 21 11:51:41 2025 +0800
+
+    refactor boot logic for immediate init (#23)
+
+[33mcommit c653cb833d809aefdcdf3c62da863d608aaeb068[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Thu Aug 21 11:26:21 2025 +0800
+
+    feat: enable file upload keywords and bind UI buttons (#22)
+
+[33mcommit e550094804470a6a1a3d6f803a7b6132a2b50f0f[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Thu Aug 21 10:19:21 2025 +0800
+
+    fix: ensure plugins load and default to gpt-oss (#21)
+
+[33mcommit 8fa7e446694eb6671ebb48a5b9ba8ecc94504f85[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 23:07:50 2025 +0800
+
+    fix: enable local ollama keywords and bind buttons (#20)
+
+[33mcommit 6aae98a43293ddb99419af5b7b02ce8287a26c1a[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 21:55:29 2025 +0800
+
+    fix: drop optional chaining for classic ui (#19)
+
+[33mcommit 05eb5f81faf7cf24185cbe82f7f2dd0d87cbaa40[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 16:36:46 2025 +0800
+
+    fix: restore actions and ai model list (#18)
+
+[33mcommit a171e9e649a9a0bc2fe245e07e904d89c86da6d6[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 16:09:51 2025 +0800
+
+    fix: restore type filters and login controls (#17)
+
+[33mcommit 6b73e6ee6b0192fac360dbcbc5ad6ac312223076[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 15:39:40 2025 +0800
+
+    style: add disabled state for buttons (#16)
+
+[33mcommit 05ffa5e1876ae1d09a4d8730241a63f4ed7d13fb[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 15:38:32 2025 +0800
+
+    Improve AI settings handling (#15)
+
+[33mcommit 74c24734549c04c30cdebac4686f6ae1bc83cfa9[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 15:37:25 2025 +0800
+
+    feat(ui): group feature toggles (#14)
+
+[33mcommit e09a6b8082031982f219d5d154511c344d647b25[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 15:36:05 2025 +0800
+
+    Consolidate batch operation toolbar (#13)
+
+[33mcommit be09be9450bc47db2d2c1c01f84c75ecb393462d[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 15:28:28 2025 +0800
+
+    Wrap settings fetch in try/catch (#12)
+
+[33mcommit f00db744c1cc0867547d2b6b3c135b941280fbf5[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 14:51:55 2025 +0800
+
+    Refine UI layout and defaults (#11)
+    
+    优化界面布局
+
+[33mcommit 126b81f774c99d19011013bc038d9d34ad72463d[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 12:38:55 2025 +0800
+
+    feat: expand settings and batch operations (#10)
+
+[33mcommit 2ecde0907e11abcb811eaa373d34bea220554e0a[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 11:52:55 2025 +0800
+
+    Add settings UI, keyword filters and CSV export (#9)
+
+[33mcommit c0b352a1a98687d0ade1c25794f1e4b209a8984b[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 11:20:49 2025 +0800
+
+    Improve scan UI and login display (#8)
+    
+    Removed the preset “C:\” value by passing an empty default_dir and exposing the current user to the template so the top bar can show login status
+    
+    Added a data-user attribute and left the scan path field blank, allowing users to pick a drive first before choosing subfolders
+    
+    Implemented paginated scanning with result counts and page indicators, updated status text from “未扫描,” and disabled navigation buttons at boundaries
+    
+    Displayed the logged-in username with a logout option in the top bar
+
+[33mcommit 51b584250375d4fcae9ee4db3d6b7ed3592abf32[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 10:22:23 2025 +0800
+
+    Fix login session, directory listing, and scan results (#7)
+
+[33mcommit 8edcb1c2ba4dc6b5891b090588a149e07b8fbab8[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Wed Aug 20 09:58:43 2025 +0800
+
+    fix: correct state file handling (#6)
+
+[33mcommit 44ea6a4184a1f951e95c5063bdac0f4a72c93281[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Wed Aug 20 09:44:14 2025 +0800
+
+    添加setting功能
+
+[33mcommit 27f3da3f1336a5c9c96f7222dfea92f354482595[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Tue Aug 19 13:12:52 2025 +0800
+
+    8月19日codex更新 (#4) (#5)
+    
+    * Feat/UI loading (#2)
+    
+    * feat(ui): add loading overlay & dir picker fixes
+    
+    * Your commit message
+    
+    * feat: improve directory scanning UI (#3)
+
+[33mcommit 1c594f7e4793011e6fe2c5f1d2f9138606e4c265[m
+Merge: ad4af20 9168c11
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Tue Aug 19 12:08:20 2025 +0800
+
+    resolve merge conflict on state.json
+
+[33mcommit ad4af208ad449cfa3e795ba4383e2f306608d3fa[m[33m ([m[1;32mfeat/ui-loading[m[33m)[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Tue Aug 19 08:53:16 2025 +0800
+
+    Add state.json file
+
+[33mcommit 9168c11eb2ad6e972e40a68909e58ec1ebd28b34[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Tue Aug 19 08:43:04 2025 +0800
+
+    feat: improve directory scanning UI (#3)
+
+[33mcommit b34d6f194706928a612b63c55e636dd1fefdd5dd[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Mon Aug 18 18:44:57 2025 +0800
+
+    Feat/UI loading (#2)
+    
+    * feat(ui): add loading overlay & dir picker fixes
+    
+    * Your commit message
+
+[33mcommit f7c74c13125b6460a9cefcd887fcd7312d62adee[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Mon Aug 18 18:29:54 2025 +0800
+
+    Your commit message
+
+[33mcommit 2792e5a042b50c85dddc67c8dffd3a55b8ae137a[m
+Merge: 3fcb8e0 53f32f5
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Mon Aug 18 18:24:46 2025 +0800
+
+    Merge branch 'main' of https://github.com/AiolosLuk005/SurprisedGroundhog into feat/ui-loading
+
+[33mcommit 3fcb8e0f2a6e023c5f63424d6b2b891398b8ef42[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Mon Aug 18 14:27:46 2025 +0800
+
+    feat(ui): add loading overlay & dir picker fixes
+
+[33mcommit 53f32f5165814ddb2b56efa4858a2a89d6871fef[m
+Author: AiolosLuk005 <157942723+AiolosLuk005@users.noreply.github.com>
+Date:   Mon Aug 18 02:26:08 2025 +0800
+
+    Update README.md
+
+[33mcommit d1a497db3ab70a41c9e1e758bcf06ca2978aaf03[m
+Author: AiolosLuk005 <aiolosluk@gmail.com>
+Date:   Mon Aug 18 02:20:38 2025 +0800
+
+    Initial commit: Surprised Groundhog project
