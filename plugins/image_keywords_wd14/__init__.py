@@ -59,7 +59,13 @@ class ImageKeywordsWD14:
 
     # ------------------------------------------------------------------
     def _load_cfg(self) -> dict:
-        cfg_path = Path(__file__).resolve().parents[1] / "config" / "settings.toml"
+        # ``settings.toml`` lives in the repository ``config`` directory which is two
+        # levels up from this file (``plugins/image_keywords_wd14``). Using
+        # ``parents[2]`` ensures the path resolves to ``<repo_root>/config``
+        # irrespective of where the plugin package is imported from.
+        cfg_path = (
+            Path(__file__).resolve().parents[2] / "config" / "settings.toml"
+        )
         if cfg_path.exists():
             with open(cfg_path, "rb") as f:
                 return tomllib.load(f).get("wd14", {})
