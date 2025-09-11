@@ -1,34 +1,43 @@
-忽略常见的虚拟环境文件夹
+# -----------------------
+# Python / 虚拟环境
+# -----------------------
 venv/
 .venv/
 env/
+__pycache__/
 
-忽略 VS Code 的设定资料夹
+# -----------------------
+# IDE / 编辑器
+# -----------------------
 .vscode/
+.idea/
 
-忽略快取资料夹
-pycache/
-
-忽略所有的 .log 文件
+# -----------------------
+# 日志 / 缓存文件
+# -----------------------
 *.log
+*.tmp
+*.swp
 
-忽略输出文件夹
+# -----------------------
+# 输出目录 / 中间文件
+# -----------------------
 output/
-
-忽略自动生成的文件
 state.json
 data/normalized/
 
-------------------
-Git LFS 大文件配置
-------------------
-明确忽略所有 .onnx 和 .csv 文件，后续再通过 ! 规则取消忽略特定的文件
-*.onnx
-*.csv
+# -----------------------
+# Git LFS 管理大文件
+# -----------------------
+# 提示：大文件（如 *.onnx, *.safetensors, *.ckpt）由 .gitattributes 配置交给 LFS 管理
+# 不要在这里忽略它们
+# （.gitattributes 已包含：*.onnx filter=lfs diff=lfs merge=lfs -text）
 
-# 确保 wd14 目录本身可以被跟踪
-**/wd14/*
-
-# 明确取消忽略你要提交的文件
-!**/wd14/models/wd-vit-tagger-v3.onnx
-!**/wd14/models/wd-vit-tagger-v3.csv
+# -----------------------
+# 例外文件（明确不忽略）
+# -----------------------
+!plugins/
+!plugins/image_keywords_wd14/
+!plugins/image_keywords_wd14/models/
+!plugins/image_keywords_wd14/models/*.onnx
+!plugins/image_keywords_wd14/models/*.csv
