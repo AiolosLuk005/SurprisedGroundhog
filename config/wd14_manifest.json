@@ -4,25 +4,17 @@
   "files": [
     {
       "filename": "wd-vit-tagger-v3.onnx",
-      "path": "D:/AI/models/wd14/wd-vit-tagger-v3.onnx",
-      "size_bytes": 0,
-      "sha256": "",
+      "path": "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.onnx",
+      "size_bytes": 134,
+      "sha256": "b7a2a3606a12e94a6a66331df2a3558958332565647f0f20be2e2fd56a37d73b",
       "source": "copy",
       "version": "v3"
     },
     {
-      "filename": "tags.txt",
-      "path": "D:/AI/models/wd14/tags.txt",
-      "size_bytes": 0,
-      "sha256": "",
-      "source": "copy",
-      "version": "v3"
-    },
-    {
-      "filename": "char_tags.txt",
-      "path": "D:/AI/models/wd14/char_tags.txt",
-      "size_bytes": 0,
-      "sha256": "",
+      "filename": "wd-vit-tagger-v3.csv",
+      "path": "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.csv",
+      "size_bytes": 308468,
+      "sha256": "298633d94d0031d2081c0893f29c82eab7f0df00b08483ba8f29d1e979441217",
       "source": "copy",
       "version": "v3"
     }
@@ -30,4 +22,3 @@
   "updated_at": "2024-01-01",
   "notes": "vit-only boot; convnext/swin optional."
 }
-
