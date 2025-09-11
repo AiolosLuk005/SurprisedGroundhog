@@ -84,12 +84,14 @@ class ImageKeywordsWD14:
         return set()
 
     def _load_dict(self) -> dict:
-        path = Path(__file__).with_name("zh_dictionary.json")
+        trans_cfg = self._cfg.get("translation", {})
+        dict_path = trans_cfg.get("dict")
+        path = Path(dict_path) if dict_path else Path(__file__).with_name("zh_dictionary.json")
         if path.exists():
             try:
                 return json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                return {}
+            except Exception as e:
+                logger.warning("Failed to load translation dictionary %s: %s", path, e)
         return {}
 
     def _verify_manifest(self, manifest_path: Path) -> None:
@@ -237,6 +239,15 @@ class ImageKeywordsWD14:
             arr = arr[None]
         return arr
 
+    def _translate_tags(self, tags: List[str]) -> List[str]:
+        """Translate tags to simplified Chinese using dictionary if enabled."""
+        if not self._cfg.get("translation", {}).get("enable", False):
+            return tags
+        translated = [self._dict.get(t, t) for t in tags]
+        replaced = sum(1 for a, b in zip(tags, translated) if a != b)
+        logger.debug("Translated %d/%d tags using dictionary", replaced, len(tags))
+        return translated
+
     def _infer_tags(self, img: Image.Image) -> List[str]:
         import numpy as np  # noqa: F401
 
@@ -267,8 +278,7 @@ class ImageKeywordsWD14:
         if self._cfg.get("output", {}).get("replace_underscore", True):
             tags = [t.replace("_", " ") for t in tags]
 
-        if self._cfg.get("translation", {}).get("enable", False):
-            tags = [self._dict.get(t, t) for t in tags]
+        tags = self._translate_tags(tags)
 
         logger.debug("Inference produced %d tags", len(tags))
         return tags
