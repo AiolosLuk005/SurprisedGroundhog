@@ -46,6 +46,8 @@ class ImageKeywordsWD14:
         self._blacklist = self._load_blacklist()
         self._dict = self._load_dict()
         self._session = None
+        # Default to NCHW layout; will be updated when model is loaded
+        self._layout = "NCHW"
         self._general_tags: List[str] = []
         self._char_tags: List[str] = []
         self._manifest_error: str | None = None
@@ -82,12 +84,14 @@ class ImageKeywordsWD14:
         return set()
 
     def _load_dict(self) -> dict:
-        path = Path(__file__).with_name("zh_dictionary.json")
+        trans_cfg = self._cfg.get("translation", {})
+        dict_path = trans_cfg.get("dict")
+        path = Path(dict_path) if dict_path else Path(__file__).with_name("zh_dictionary.json")
         if path.exists():
             try:
                 return json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                return {}
+            except Exception as e:
+                logger.warning("Failed to load translation dictionary %s: %s", path, e)
         return {}
 
     def _verify_manifest(self, manifest_path: Path) -> None:
@@ -142,6 +146,24 @@ class ImageKeywordsWD14:
 
         self._session = ort.InferenceSession(model_path, providers=providers)
         logger.info("WD14 model loaded successfully")
+
+        # Determine expected input layout based on the first input tensor shape.
+        # Models may expect either NCHW (channels first) or NHWC (channels last)
+        # layouts. Inspecting the position of the channel dimension allows us to
+        # adapt preprocessing accordingly.
+        input_shape = self._session.get_inputs()[0].shape
+        layout = "NCHW"
+        if len(input_shape) == 4:
+            if input_shape[1] == 3 or str(input_shape[1]) == "3":
+                layout = "NCHW"
+            elif input_shape[3] == 3 or str(input_shape[3]) == "3":
+                layout = "NHWC"
+            else:
+                logger.warning(
+                    "Unexpected model input shape %s, defaulting to NCHW", input_shape
+                )
+        self._layout = layout
+        logger.info("Resolved model input layout: %s", self._layout)
 
         tag_path_cfg = model_cfg.get("taglist")
         char_path_cfg = model_cfg.get("charlist")
@@ -207,8 +229,24 @@ class ImageKeywordsWD14:
         mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
         std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
         arr = (arr - mean) / std
-        arr = arr.transpose(2, 0, 1)[None]
+        if self._layout == "NCHW":
+            # Convert from HWC to CHW layout if the model expects channels first.
+            logger.debug("Preprocessing image in NCHW layout")
+            arr = arr.transpose(2, 0, 1)[None]
+        else:
+            # Model expects channels last; keep NHWC layout.
+            logger.debug("Preprocessing image in NHWC layout")
+            arr = arr[None]
         return arr
+
+    def _translate_tags(self, tags: List[str]) -> List[str]:
+        """Translate tags to simplified Chinese using dictionary if enabled."""
+        if not self._cfg.get("translation", {}).get("enable", False):
+            return tags
+        translated = [self._dict.get(t, t) for t in tags]
+        replaced = sum(1 for a, b in zip(tags, translated) if a != b)
+        logger.debug("Translated %d/%d tags using dictionary", replaced, len(tags))
+        return translated
 
     def _infer_tags(self, img: Image.Image) -> List[str]:
         import numpy as np  # noqa: F401
@@ -240,8 +278,7 @@ class ImageKeywordsWD14:
         if self._cfg.get("output", {}).get("replace_underscore", True):
             tags = [t.replace("_", " ") for t in tags]
 
-        if self._cfg.get("translation", {}).get("enable", False):
-            tags = [self._dict.get(t, t) for t in tags]
+        tags = self._translate_tags(tags)
 
         logger.debug("Inference produced %d tags", len(tags))
         return tags
