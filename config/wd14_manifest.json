@@ -11,11 +11,6 @@
       "version": "v3"
     },
     {
-      "filename": "wd-vit-tagger-v3.csv",
-      "path": "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.csv",
-      "size_bytes": 308468,
-      "sha256": "298633d94d0031d2081c0893f29c82eab7f0df00b08483ba8f29d1e979441217",
-      "source": "copy",
       "version": "v3"
     }
   ],
