@@ -3,6 +3,9 @@ path     = "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.onnx"
 variant  = "vit-v3"
 provider   = "auto"
 batch_size = 8
+# taglist  and charlist can be omitted to use files next to the model
+# taglist  = "plugins/image_keywords_wd14/models/tags.txt"
+# charlist = "plugins/image_keywords_wd14/models/char_tags.txt"
 
 [wd14.threshold]
 general   = 0.35

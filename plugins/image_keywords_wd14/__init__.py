@@ -143,10 +143,23 @@ class ImageKeywordsWD14:
         self._session = ort.InferenceSession(model_path, providers=providers)
         logger.info("WD14 model loaded successfully")
 
-        tag_path = model_cfg.get("taglist", "")
-        char_path = model_cfg.get("charlist", "")
-        self._general_tags = Path(tag_path).read_text(encoding="utf-8").splitlines()
-        self._char_tags = Path(char_path).read_text(encoding="utf-8").splitlines()
+        tag_path_cfg = model_cfg.get("taglist")
+        char_path_cfg = model_cfg.get("charlist")
+        model_dir = Path(model_path).resolve().parent
+        tag_path = Path(tag_path_cfg) if tag_path_cfg else model_dir / "tags.txt"
+        char_path = (
+            Path(char_path_cfg) if char_path_cfg else model_dir / "char_tags.txt"
+        )
+
+        if not tag_path.exists():
+            raise FileNotFoundError(f"tag list not found: {tag_path}")
+        if not char_path.exists():
+            raise FileNotFoundError(
+                f"character tag list not found: {char_path}"
+            )
+
+        self._general_tags = tag_path.read_text(encoding="utf-8").splitlines()
+        self._char_tags = char_path.read_text(encoding="utf-8").splitlines()
 
     # ------------------------------------------------------------------
     def can_handle(self, path: str) -> bool:
