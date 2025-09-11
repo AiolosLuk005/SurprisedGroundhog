@@ -1,7 +1,5 @@
 [wd14.model]
 path     = "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.onnx"
-taglist  = "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.csv"
-charlist = "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.csv"
 variant  = "vit-v3"
 provider   = "auto"
 batch_size = 8
