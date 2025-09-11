@@ -11,23 +11,9 @@
       "version": "v3"
     },
     {
-      "filename": "tags.txt",
-      "path": "plugins/image_keywords_wd14/models/tags.txt",
-      "size_bytes": 103853,
-      "sha256": "e7e1733664d5f36eee6d51836ca02167ef626282cf30200e7fdb655e28eafb10",
-      "source": "generated",
-      "version": "v3"
-    },
-    {
-      "filename": "char_tags.txt",
-      "path": "plugins/image_keywords_wd14/models/char_tags.txt",
-      "size_bytes": 50461,
-      "sha256": "671fd0f92619ceb55eaf82a320af993071def0a9d35b518f6e109b205f21a184",
-      "source": "generated",
       "version": "v3"
     }
   ],
   "updated_at": "2024-01-01",
   "notes": "vit-only boot; convnext/swin optional."
 }
-
