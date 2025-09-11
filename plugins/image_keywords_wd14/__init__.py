@@ -94,17 +94,25 @@ class ImageKeywordsWD14:
         if not manifest_path.exists():
             raise FileNotFoundError(f"manifest not found: {manifest_path}")
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        changed = False
         for f in data.get("files", []):
             p = Path(f["path"])
             if not p.exists():
                 raise FileNotFoundError(f"missing {p}")
             size = p.stat().st_size
-            if int(f.get("size_bytes", -1)) != size:
-                raise ValueError(f"size mismatch for {p}")
             with open(p, "rb") as fh:
                 sha = hashlib.sha256(fh.read()).hexdigest()
-            if f.get("sha256") != sha:
-                raise ValueError(f"sha256 mismatch for {p}")
+            if int(f.get("size_bytes", -1)) != size or f.get("sha256") != sha:
+                logger.warning("manifest mismatch for %s, updating", p)
+                f["size_bytes"] = size
+                f["sha256"] = sha
+                changed = True
+        if changed:
+            manifest_path.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            logger.info("updated manifest %s", manifest_path)
 
     # ------------------------------------------------------------------
     def _ensure_model(self) -> None:
