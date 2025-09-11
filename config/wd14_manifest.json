@@ -4,26 +4,26 @@
   "files": [
     {
       "filename": "wd-vit-tagger-v3.onnx",
-      "path": "D:/AI/models/wd14/wd-vit-tagger-v3.onnx",
-      "size_bytes": 0,
-      "sha256": "",
+      "path": "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.onnx",
+      "size_bytes": 134,
+      "sha256": "b7a2a3606a12e94a6a66331df2a3558958332565647f0f20be2e2fd56a37d73b",
       "source": "copy",
       "version": "v3"
     },
     {
       "filename": "tags.txt",
-      "path": "D:/AI/models/wd14/tags.txt",
-      "size_bytes": 0,
-      "sha256": "",
-      "source": "copy",
+      "path": "plugins/image_keywords_wd14/models/tags.txt",
+      "size_bytes": 103853,
+      "sha256": "e7e1733664d5f36eee6d51836ca02167ef626282cf30200e7fdb655e28eafb10",
+      "source": "generated",
       "version": "v3"
     },
     {
       "filename": "char_tags.txt",
-      "path": "D:/AI/models/wd14/char_tags.txt",
-      "size_bytes": 0,
-      "sha256": "",
-      "source": "copy",
+      "path": "plugins/image_keywords_wd14/models/char_tags.txt",
+      "size_bytes": 50461,
+      "sha256": "671fd0f92619ceb55eaf82a320af993071def0a9d35b518f6e109b205f21a184",
+      "source": "generated",
       "version": "v3"
     }
   ],
