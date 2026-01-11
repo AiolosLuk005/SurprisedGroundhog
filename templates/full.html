@@ -50,91 +50,85 @@
 
 <body data-user="{{ current_user or '' }}">
   <div class="topbar">
-    <h2 class="brand">Surprised Groundhog · V1.01</h2>
-    <img class="logo" src="{{ url_for('static', filename='logo.png') }}" alt="logo">
-    <!-- 用户工具挂载区：设置 / 登录 / 登出 / 用户名 -->
-    <div id="userTools" style="margin-left:auto; display:flex; align-items:center; gap:8px;"></div>
+    <div style="display:flex;align-items:center">
+      <img class="logo" src="{{ url_for('static', filename='logo.png') }}" alt="logo">
+      <h2 class="brand">Surprised Groundhog</h2>
+    </div>
+    <!-- 用户工具挂载区 -->
+    <div id="userTools" style="display:flex; align-items:center; gap:8px;"></div>
   </div>
 
-  <!-- 顶部搜索工具栏 -->
-  <div class="toolbar" id="searchToolbar">
-    <input id="searchInput" type="text" placeholder="内容搜索…" style="min-width:220px;">
-    <label style="margin-left:8px;">k：</label>
-    <input id="searchK" type="number" value="5" min="1" max="100" style="width:60px;">
-    <label class="pill"><input type="checkbox" id="chkVector" checked> 向量</label>
-    <label class="pill"><input type="checkbox" id="chkFull" checked> 全文</label>
-    <label class="pill"><input type="checkbox" id="chkRegex"> 正则</label>
-    <button class="btn" id="filterBuilderBtn">过滤器构造器</button>
-    <button class="btn" id="searchBtn">搜索</button>
-  </div>
+  <div class="main-container">
+    
+    <!-- 搜索板块 -->
+    <div class="card-section">
+      <div class="toolbar" id="searchToolbar">
+        <strong style="color:var(--color-accent)">🔍 检索</strong>
+        <div style="width:1px;height:20px;background:#eee;margin:0 8px;"></div>
+        <input id="searchInput" type="text" placeholder="输入内容进行混合检索…" style="min-width:300px;">
+        <label>k：</label>
+        <input id="searchK" type="number" value="5" min="1" max="100" style="width:60px;">
+        <label class="pill"><input type="checkbox" id="chkVector" checked> 向量</label>
+        <label class="pill"><input type="checkbox" id="chkFull" checked> 全文</label>
+        <button class="btn" id="filterBuilderBtn">过滤器</button>
+        <button class="btn primary" id="searchBtn">搜索</button>
+      </div>
+    </div>
 
-  <div class="row">
-    <label for="category">档案种类：</label>
-    <select id="category">
-      <option value="TEXT">文字档案</option>
-      <option value="DATA">数据档案</option>
-      <option value="SLIDES">简报档案</option>
-      <option value="PDF">PDF 档案</option>
-      <option value="ARCHIVE">压缩档案</option>
-      <option value="IMAGE">图片档案</option>
-      <option value="VIDEO">视频档案</option>
-      <option value="AUDIO">音频档案</option>
-    </select>
+    <!-- 扫描控制板块 -->
+    <div class="card-section">
+      <div class="row" style="margin-bottom:12px;">
+         <strong style="color:var(--color-text-secondary)">📁 扫描源</strong>
+         <input id="dir" type="text" value="{{ default_dir }}" placeholder="选择目录…" style="flex:1;min-width: 200px;">
+         <button class="btn" id="pickDir">浏览...</button>
+         <label class="pill"><input id="hash" type="checkbox" {% if enable_hash_default %}checked{% endif %}> SHA256</label>
+         <label class="pill"><input id="recur" type="checkbox" checked> 递归</label> 
+      </div>
+      <div class="row">
+        <label>种类：</label>
+        <select id="category">
+          <option value="TEXT">文字档案</option>
+          <option value="DATA">数据档案</option>
+          <option value="SLIDES">简报档案</option>
+          <option value="PDF">PDF 档案</option>
+          <option value="ARCHIVE">压缩档案</option>
+          <option value="IMAGE">图片档案</option>
+          <option value="VIDEO">视频档案</option>
+          <option value="AUDIO">音频档案</option>
+        </select>
+        
+        <label>分页：</label>
+        <input id="page_size" type="number" value="{{ page_size_default }}" min="10" max="2000" style="width:80px">
+        
+        <button class="btn primary" id="scanBtn" style="min-width:120px;">开始扫描</button>
+        <span id="count" class="muted" style="margin-left:auto;">就绪</span>
+      </div>
+    </div>
 
-    <label for="types">档案类型（可多选）：</label>
-    <select id="types" multiple size="6" style="min-width: 160px;"></select>
-
-    <label for="dir">扫描目录：</label>
-    <input id="dir" type="text" value="{{ default_dir }}" placeholder="请选择要扫描的目录…" style="min-width: 300px;">
-    <button class="btn" id="pickDir">选择目录</button>
-
-    <label class="pill"><input id="hash" type="checkbox" {% if enable_hash_default %}checked{% endif %}> 计算 SHA256</label>
-    <label class="pill"><input id="recur" type="checkbox" checked> 包含子文件夹</label>
-
-    <label>分页：</label>
-    <input id="page_size" type="number" value="{{ page_size_default }}" min="10" max="10000">
-    <button class="btn" id="scanBtn">开始扫描</button>
-    <span id="count" class="muted right">未扫描</span>
-  </div>
-
-  <div class="toolbar">
-    <input id="q" type="text" placeholder="搜索（文件名/扩展名/路径）" style="min-width:280px;">
-    <input id="kwFilter" type="text" placeholder="按关键词列过滤（空格分隔多个）" style="min-width:240px;">
-    <button class="btn" id="kwFilterBtn">过滤</button>
-    <select id="kwStrategy" title="关键词提取策略" style="min-width:140px;">
-      <option value="hybrid" selected>hybrid（默认）</option>
-      <option value="fast">fast（快速）</option>
-      <option value="embed">embed（语义重排）</option>
-      <option value="llm">llm（模型直生）</option>
-    </select>
-    <label style="margin-left:8px;">关键词长度：</label>
-    <input id="kw_len" type="number" value="50" min="10" max="200" style="width:80px;">
-    <button class="btn" id="exportBtn">导出 CSV</button>
-    <button class="btn" id="importBtn">导入 MySQL</button>
-    <label class="pill"><input type="checkbox" id="autoNormalize"> 导入后规范化</label>
-  </div>
-
-  <div class="toolbar">
-    <!-- 生成前缀 -->
-    <input id="kwSeeds" type="text" placeholder="生成前缀（分号;分隔）" style="min-width:220px;">
-    <label class="pill" title="仅对关键词为空的行执行生成，已存在的不覆盖">
-      <input id="kwOnlyEmpty" type="checkbox"> 仅为空生成
-    </label>
-
-    <button class="btn" id="genKwBtn">提取关键词</button>
-    <button class="btn" id="aiRefineBtn" title="在 hybrid 模式下触发 LLM 精修（force_llm=true）">AI 优化</button>
-    <button class="btn" id="clearKwBtn">清除关键词</button>
-    <button class="btn" id="btnImgKW">图片关键词提取</button>
-    <select id="normStrategy" style="min-width:120px;">
-      <option value="fallback" selected>fallback</option>
-      <option value="skip">skip</option>
-      <option value="ledger">ledger</option>
-    </select>
-    <button class="btn" id="normalizeBtn">规范化转换</button>
-    <button class="btn" id="applyMoveBtn">批量移动</button>
-    <button class="btn" id="applyRenameBtn">批量重命名</button>
-    <button class="btn" id="applyDeleteBtn">批量删除</button>
-  </div>
+    <!-- 批量操作 & AI 板块 -->
+    <div class="card-section">
+      <div class="toolbar" style="margin-bottom:10px;">
+        <strong>⚡ 批量操作</strong>
+        <input id="kwFilter" type="text" placeholder="关键词过滤" style="width:140px;">
+        <button class="btn btn-sm" id="kwFilterBtn">Filter</button>
+        <div style="flex:1"></div>
+        <button class="btn" id="applyMoveBtn">移动</button>
+        <button class="btn" id="applyRenameBtn">重命名</button>
+        <button class="btn" id="applyDeleteBtn" style="color:#d32d27;">删除</button>
+      </div>
+      <div class="toolbar" style="background:#f9f9f9; padding:8px; border-radius:4px;">
+        <span class="badge" style="background:var(--color-accent-light);color:var(--color-accent)">AI 工具</span>
+        <input id="kwSeeds" type="text" placeholder="生成前缀/种子词..." style="width:180px;">
+        <button class="btn" id="genKwBtn">提取关键词</button>
+        <button class="btn" id="aiRefineBtn">AI 精修</button>
+        <button class="btn" id="btnImgKW">图片分析</button>
+        <div style="width:1px;height:20px;background:#ddd;margin:0 4px;"></div>
+        <button class="btn" id="normalizeBtn">规范化转换</button>
+      </div>
+    </div>
+    
+    <!-- 数据表格 -->
+    <div class="card-section" style="padding:0;">
 
   <table id="tbl" class="fixed-table">
     <colgroup>
@@ -178,6 +172,8 @@
 
   <!-- 搜索结果区域 -->
   <div id="searchResults" class="row" style="flex-direction:column; gap:8px;"></div>
+  
+  </div> <!-- /main-container -->
 
   <!-- 目录选择弹窗 -->
   <div id="dirModal" class="modal">

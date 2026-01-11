@@ -2,7 +2,7 @@ allowed_roots = ["C:/", "D:/", "E:/", "F:/", "G:/"]
 port = 5005
 enable_hash = false
 page_size_default = 50
-ollama = { enable = true, model = "llama3.1:latest", timeout_sec = 30 }
+ollama = { enable = true, model = "llama3.1:latest", timeout_sec = 120 }
 
 # 放在全局（不在 [mysql] 里）
 trash_dir = "D:/SurprisedGroundhog_Trash"

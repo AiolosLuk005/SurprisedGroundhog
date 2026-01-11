@@ -16,7 +16,7 @@
     "provider": "ollama",
     "url": "http://localhost:11434",
     "api_key": "",
-    "model": "llama3.1:latest"
+    "model": "gpt-oss:20b"
   },
   "prompts": {
     "map": "你是专业的信息抽取助手。请对给定分块文本进行候选关键词提取，并严格以JSON输出。\\n\\n文档元数据：\\n- 文件名：{{filename}}\\n- 路径：{{path}}\\n- 文档类型：{{doc_type}}\\n- 语言：{{language}}\\n\\n禁止输出除JSON以外的任何字符。要求：\\n- 8~15 个关键词（term），类型包含：主题/实体/术语/行动/地点/组织；权重0~1。\\n- 3~8 个关键短语（keyphrases，2~5词）。\\n- 去除低信息量词与空词（如：报告/分析/文件/内容/章节/页面/演示/数据 等）。\\n- 同义合并、大小写与繁简统一。\\n- 附带80字内的“局部摘要”。\\n\\n输出JSON：\\n{\\n  \"language\": \"<zh|en>\",\\n  \"keywords\": [{\"term\":\"...\",\"weight\":0.00,\"type\":\"主题|实体|术语|行动|地点|组织\"}],\\n  \"keyphrases\": [{\"phrase\":\"...\",\"weight\":0.00}],\\n  \"summary\": \"...\"\\n}\\n\\n分块内容：\\n\"\"\"\\n{{chunk_text}}\\n\"\"\"",

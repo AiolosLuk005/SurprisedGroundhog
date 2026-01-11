@@ -7,7 +7,7 @@ from core.settings import SETTINGS
 
 # 你的蓝图（保持现有路径）
 from api.ai import bp as ai_bp            # /api/ai/*
-from api.routes import bp as full_bp      # 我们将把它注册到 /full/*
+# from api.routes import bp as full_bp      # DEPRECATED
 
 # 端口配置及日志配置
 from core.config import PORT, LOG_LEVEL, LOG_FILE
@@ -55,9 +55,10 @@ def create_app() -> Flask:
     # --------------------------- Blueprint Registration ---------------------------
     # /api/ai/* 直接保留
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
-    # 你的 routes.py 里 bp = Blueprint("api", __name__)
-    # 我们统一挂到 /full 前缀下（你在 routes.py 中的所有接口都会暴露成 /full/xxx）
-    app.register_blueprint(full_bp, url_prefix="/full")
+
+    # New modular blueprints
+    from api.blueprints import register_blueprints
+    register_blueprints(app)
 
     # --------------------------- Home ---------------------------
     # 访问根路径 → 进入完整页面（/full/ 渲染 full.html）
