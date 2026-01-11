@@ -5,8 +5,8 @@
     {
       "filename": "wd-vit-tagger-v3.onnx",
       "path": "plugins/image_keywords_wd14/models/wd-vit-tagger-v3.onnx",
-      "size_bytes": 134,
-      "sha256": "b7a2a3606a12e94a6a66331df2a3558958332565647f0f20be2e2fd56a37d73b",
+      "size_bytes": 378536310,
+      "sha256": "35f23693620b668f4d53fd3c62bf65e40af739bc52c7eb0fbc49258b58d065b6",
       "source": "copy",
       "version": "v3"
     }
