@@ -7,12 +7,12 @@ ollama = { enable = true, model = "llama3.1:latest", vision_model = "qwen3-vl:8b
 # 放在全局（不在 [mysql] 里）
 trash_dir = "D:/SurprisedGroundhog_Trash"
 
-[mysql]
-enable = true        # ← 修正这里（原来是 ture）
+[postgresql]
+enable = true
 host = "127.0.0.1"
-port = 3306
-user = "root"
-password = "mem@MS0ry"
+port = 5432
+user = "postgres"
+password = "mem@PG0ry"
 database = "groundhog"
 
 [logging]

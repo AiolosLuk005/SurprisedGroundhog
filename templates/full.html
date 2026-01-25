@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="utf-8">
   <title>Surprised Groundhog · V1.01</title>
@@ -8,43 +9,170 @@
 
   <style>
     /* 目录选择弹窗 */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;z-index:9999}
-    .modal-content{width:760px;max-width:92vw;margin:10vh auto;background:#fff;border-radius:10px;
-      box-shadow:0 16px 48px rgba(0,0,0,.18);padding:10px 12px}
-    .modal-head,.modal-foot{display:flex;align-items:center;justify-content:space-between;padding:6px 4px}
-    .modal-body{max-height:64vh;overflow:auto;padding:6px 2px}
-    #dirList{list-style:none;margin:0;padding:0}
-    #dirList li{padding:8px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer}
-    #dirList li:hover{background:#f7f7f7}
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .28);
+      display: none;
+      z-index: 9999
+    }
+
+    .modal-content {
+      width: 760px;
+      max-width: 92vw;
+      margin: 10vh auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .18);
+      padding: 10px 12px
+    }
+
+    .modal-head,
+    .modal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 4px
+    }
+
+    .modal-body {
+      max-height: 64vh;
+      overflow: auto;
+      padding: 6px 2px
+    }
+
+    #dirList {
+      list-style: none;
+      margin: 0;
+      padding: 0
+    }
+
+    #dirList li {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer
+    }
+
+    #dirList li:hover {
+      background: #f7f7f7
+    }
   </style>
 
   <style>
-  /* 全屏加载遮罩 */
-  .loader { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
-    background: rgba(255,255,255,.65); z-index: 99999; text-align: center; }
-  .loader.show { display: flex; }
-  .spinner{ width: 44px; height: 44px; border: 4px solid #e5e7eb; border-top-color: #111827;
-    border-radius: 50%; animation: spin .9s linear infinite; margin: 12px auto; }
-  @keyframes spin{ to{ transform: rotate(360deg); } }
-  .spinner.hourglass{ width: 24px; height: 24px; border:0; position:relative; }
-  .spinner.hourglass:before, .spinner.hourglass:after{
-    content:""; position:absolute; left:0; right:0; margin:auto; width:0; height:0;
-    border-left:12px solid transparent; border-right:12px solid transparent; animation: flip 1.2s infinite;
-  }
-  .spinner.hourglass:before{ top:0; border-bottom:14px solid #111827; }
-  .spinner.hourglass:after{ bottom:0; border-top:14px solid #111827; animation-delay:.6s; }
-  @keyframes flip{ 0%,100%{ transform: scaleY(1);} 50%{ transform: scaleY(0.2);} }
-  .loading-text { font-size: 12px; color:#444; }
+    /* 全屏加载遮罩 */
+    .loader {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .65);
+      z-index: 99999;
+      text-align: center;
+    }
 
-  /* 确认 / 预览弹窗 */
-  .confirm-modal, .preview-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5);
-    display: none; z-index: 10000; align-items: center; justify-content: center; }
-  .confirm-modal-content, .preview-modal-content {
-    background: #fff; padding: 20px; border-radius: 8px; max-width: 680px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: left;
-  }
-  .preview-content { max-width: 100%; max-height: 80vh; overflow: auto; }
-  .preview-content img, .preview-content video { max-width: 100%; height: auto; }
+    .loader.show {
+      display: flex;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #111827;
+      border-radius: 50%;
+      animation: spin .9s linear infinite;
+      margin: 12px auto;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner.hourglass {
+      width: 24px;
+      height: 24px;
+      border: 0;
+      position: relative;
+    }
+
+    .spinner.hourglass:before,
+    .spinner.hourglass:after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      margin: auto;
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      animation: flip 1.2s infinite;
+    }
+
+    .spinner.hourglass:before {
+      top: 0;
+      border-bottom: 14px solid #111827;
+    }
+
+    .spinner.hourglass:after {
+      bottom: 0;
+      border-top: 14px solid #111827;
+      animation-delay: .6s;
+    }
+
+    @keyframes flip {
+
+      0%,
+      100% {
+        transform: scaleY(1);
+      }
+
+      50% {
+        transform: scaleY(0.2);
+      }
+    }
+
+    .loading-text {
+      font-size: 12px;
+      color: #444;
+    }
+
+    /* 确认 / 预览弹窗 */
+    .confirm-modal,
+    .preview-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      display: none;
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .confirm-modal-content,
+    .preview-modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 680px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      text-align: left;
+    }
+
+    .preview-content {
+      max-width: 100%;
+      max-height: 80vh;
+      overflow: auto;
+    }
+
+    .preview-content img,
+    .preview-content video {
+      max-width: 100%;
+      height: auto;
+    }
   </style>
 </head>
 
@@ -54,12 +182,15 @@
       <img class="logo" src="{{ url_for('static', filename='logo.png') }}" alt="logo">
       <h2 class="brand">Surprised Groundhog</h2>
     </div>
-    <!-- 用户工具挂载区 -->
-    <div id="userTools" style="display:flex; align-items:center; gap:8px;"></div>
+    <div id="userTools" style="display:flex; align-items:center; gap:12px;">
+      <a href="/db/"
+        style="text-decoration:none; font-size:14px; border:1px solid #ddd; padding:4px 8px; border-radius:4px; color:var(--color-text-secondary);">🗄️
+        数据库档案</a>
+    </div>
   </div>
 
   <div class="main-container">
-    
+
     <!-- 搜索板块 -->
     <div class="card-section">
       <div class="toolbar" id="searchToolbar">
@@ -78,11 +209,12 @@
     <!-- 扫描控制板块 -->
     <div class="card-section">
       <div class="row" style="margin-bottom:12px;">
-         <strong style="color:var(--color-text-secondary)">📁 扫描源</strong>
-         <input id="dir" type="text" value="{{ default_dir }}" placeholder="选择目录…" style="flex:1;min-width: 200px;">
-         <button class="btn" id="pickDir">浏览...</button>
-         <label class="pill"><input id="hash" type="checkbox" {% if enable_hash_default %}checked{% endif %}> SHA256</label>
-         <label class="pill"><input id="recur" type="checkbox" checked> 递归</label> 
+        <strong style="color:var(--color-text-secondary)">📁 扫描源</strong>
+        <input id="dir" type="text" value="{{ default_dir }}" placeholder="选择目录…" style="flex:1;min-width: 200px;">
+        <button class="btn" id="pickDir">浏览...</button>
+        <label class="pill"><input id="hash" type="checkbox" {% if enable_hash_default %}checked{% endif %}>
+          SHA256</label>
+        <label class="pill"><input id="recur" type="checkbox" checked> 递归</label>
       </div>
       <div class="row">
         <label>种类：</label>
@@ -96,11 +228,13 @@
           <option value="VIDEO">视频档案</option>
           <option value="AUDIO">音频档案</option>
         </select>
-        
+
         <label>分页：</label>
         <input id="page_size" type="number" value="{{ page_size_default }}" min="10" max="2000" style="width:80px">
-        
+
         <button class="btn primary" id="scanBtn" style="min-width:120px;">开始扫描</button>
+        <button class="btn" id="saveToDbBtn" style="min-width:140px; background:#10b981; color:white;" disabled>💾
+          保存到数据库</button>
         <span id="count" class="muted" style="margin-left:auto;">就绪</span>
       </div>
     </div>
@@ -126,217 +260,218 @@
         <button class="btn" id="normalizeBtn">规范化转换</button>
       </div>
     </div>
-    
+
     <!-- 数据表格 -->
     <div class="card-section" style="padding:0;">
 
-  <table id="tbl" class="fixed-table">
-    <colgroup>
-      <col class="col-select">
-      <col class="col-name">
-      <col class="col-path">
-      <col class="col-ext">
-      <col class="col-category">
-      <col class="col-size">
-      <col class="col-mtime">
-      <col class="col-keywords">
-      <col class="col-norm">
-      <col class="col-move">
-      <col class="col-rename">
-      <col class="col-preview">
-    </colgroup>
-    <thead>
-      <tr>
-        <th>选</th>
-        <th>文件名</th>
-        <th>完整路径</th>
-        <th>扩展名</th>
-        <th>类别</th>
-        <th>大小（kB）</th>
-        <th>修改时间</th>
-        <th>关键词</th>
-        <th>规范化</th>
-        <th>移动目标</th>
-        <th>重命名为</th>
-        <th>预览</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+      <table id="tbl" class="fixed-table">
+        <colgroup>
+          <col class="col-select">
+          <col class="col-name">
+          <col class="col-path">
+          <col class="col-ext">
+          <col class="col-category">
+          <col class="col-size">
+          <col class="col-mtime">
+          <col class="col-keywords">
+          <col class="col-norm">
+          <col class="col-move">
+          <col class="col-rename">
+          <col class="col-preview">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>选</th>
+            <th>文件名</th>
+            <th>完整路径</th>
+            <th>扩展名</th>
+            <th>类别</th>
+            <th>大小（kB）</th>
+            <th>修改时间</th>
+            <th>关键词</th>
+            <th>规范化</th>
+            <th>移动目标</th>
+            <th>重命名为</th>
+            <th>预览</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
 
-  <div class="row">
-    <button class="btn" id="prev">上一页</button>
-    <span id="pageinfo" class="muted"></span>
-    <button class="btn" id="next">下一页</button>
-  </div>
-
-  <!-- 搜索结果区域 -->
-  <div id="searchResults" class="row" style="flex-direction:column; gap:8px;"></div>
-  
-  </div> <!-- /main-container -->
-
-  <!-- 目录选择弹窗 -->
-  <div id="dirModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-head">
-        <strong>选择目录</strong>
-        <button class="btn btn-sm" id="dirClose">关闭</button>
+      <div class="row">
+        <button class="btn" id="prev">上一页</button>
+        <span id="pageinfo" class="muted"></span>
+        <button class="btn" id="next">下一页</button>
       </div>
-      <div class="modal-body">
-        <div class="row" style="padding:0 0 10px 0;">
-          <button class="btn btn-sm" id="dirUp">上一级</button>
-          <span id="dirHere" class="small"></span>
+
+      <!-- 搜索结果区域 -->
+      <div id="searchResults" class="row" style="flex-direction:column; gap:8px;"></div>
+
+    </div> <!-- /main-container -->
+
+    <!-- 目录选择弹窗 -->
+    <div id="dirModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-head">
+          <strong>选择目录</strong>
+          <button class="btn btn-sm" id="dirClose">关闭</button>
         </div>
-        <ul id="dirList"></ul>
-      </div>
-      <div class="modal-foot">
-        <button class="btn" id="dirOk">使用此目录</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 过滤器构造器弹窗 -->
-  <div id="filterModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-head">
-        <strong>过滤器构造器</strong>
-        <button class="btn btn-sm" id="filterClose">关闭</button>
-      </div>
-      <div class="modal-body" style="display:flex;flex-direction:column;gap:8px;">
-        <label>where JSON：</label>
-        <textarea id="whereInput" style="width:100%;height:60px;"></textarea>
-        <label>where_document JSON：</label>
-        <textarea id="whereDocInput" style="width:100%;height:60px;"></textarea>
-      </div>
-      <div class="modal-foot">
-        <div></div>
-        <button class="btn" id="filterOk">确定</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 确认弹窗 -->
-  <div id="confirmModal" class="confirm-modal" style="display:none;">
-    <div class="confirm-modal-content">
-      <p id="confirmMessage"></p>
-      <div style="margin-top: 20px; text-align:right;">
-        <button class="btn" id="confirmCancel">取消</button>
-        <button class="btn" id="confirmOk">确认</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 预览弹窗 -->
-  <div id="previewModal" class="preview-modal" style="display:none;">
-    <div class="preview-modal-content">
-      <div class="modal-head">
-        <strong id="previewTitle"></strong>
-        <button class="btn btn-sm" id="previewClose">关闭</button>
-      </div>
-      <div id="previewContent" class="preview-content"></div>
-    </div>
-  </div>
-
-  <!-- 设置弹窗 -->
-  <div id="settingsModal" class="confirm-modal" style="display:none;">
-    <div class="confirm-modal-content" style="max-width:760px;">
-      <div class="modal-head">
-        <strong>⚙️ 系统设置</strong>
-        <button class="btn btn-sm" id="settingsCancel">关闭</button>
-      </div>
-      <div class="modal-body">
-        <fieldset style="margin-bottom:12px;">
-          <legend>界面主题</legend>
-          <label class="pill"><input type="radio" name="theme" value="light"> 亮色调</label>
-          <label class="pill"><input type="radio" name="theme" value="dark"> 暗色调</label>
-          <label class="pill"><input type="radio" name="theme" value="system" checked> 跟随系统</label>
-        </fieldset>
-
-        <fieldset style="margin-bottom:12px;">
-          <legend>AI 设置</legend>
-          <div class="row">
-            <label style="min-width:90px;">提供方：</label>
-            <select id="aiProvider" style="min-width:160px;">
-              <option value="ollama">Ollama（本地）</option>
-              <option value="chatgpt">ChatGPT（远程）</option>
-              <option value="deepseek">DeepSeek（远程）</option>
-            </select>
+        <div class="modal-body">
+          <div class="row" style="padding:0 0 10px 0;">
+            <button class="btn btn-sm" id="dirUp">上一级</button>
+            <span id="dirHere" class="small"></span>
           </div>
-          <div class="row">
-            <label style="min-width:90px;">服务URL：</label>
-            <input id="aiUrl" type="text" placeholder="http://localhost:11434" style="min-width:320px;">
-          </div>
-          <div class="row">
-            <label style="min-width:90px;">API Key：</label>
-            <input id="aiApiKey" type="password" placeholder="可留空（本地Ollama不需要）" style="min-width:320px;">
-          </div>
-          <div class="row">
-            <label style="min-width:90px;">模型：</label>
-            <select id="aiModel" style="min-width:220px;">
-              <option value="">（稍后加载/或手动填写）</option>
-            </select>
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>功能权限（管理员勾选开关）</legend>
-          <div class="row" style="flex-wrap:wrap; gap:10px;">
-            <label class="pill"><input type="checkbox" id="feat_text" checked> 文字</label>
-            <label class="pill"><input type="checkbox" id="feat_data" checked> 数据</label>
-            <label class="pill"><input type="checkbox" id="feat_slides" checked> 简报</label>
-            <label class="pill"><input type="checkbox" id="feat_pdf" checked> PDF</label>
-            <label class="pill"><input type="checkbox" id="feat_archive" checked> 压缩</label>
-            <label class="pill"><input type="checkbox" id="feat_image" checked> 图片</label>
-            <label class="pill"><input type="checkbox" id="feat_video" checked> 视频</label>
-            <label class="pill"><input type="checkbox" id="feat_audio" checked> 音频</label>
-            <label class="pill"><input type="checkbox" id="feat_ai_keywords" checked> AI关键词</label>
-            <label class="pill"><input type="checkbox" id="feat_move" checked> 移动</label>
-            <label class="pill"><input type="checkbox" id="feat_rename" checked> 重命名</label>
-            <label class="pill"><input type="checkbox" id="feat_delete" checked> 删除</label>
-            <label class="pill"><input type="checkbox" id="feat_image_caption"> 反向提示词</label>
-            <label class="pill"><input type="checkbox" id="feat_video_preview"> 视频预览</label>
-            <label class="pill"><input type="checkbox" id="feat_audio_preview"> 音频预览</label>
-          </div>
-        </fieldset>
-      </div>
-      <div class="modal-foot">
-        <div></div>
-        <button class="btn" id="settingsSave">保存设置</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 登录弹窗 -->
-  <div id="loginModal" class="confirm-modal" style="display:none;">
-    <div class="confirm-modal-content" style="max-width:420px;">
-      <div class="modal-head">
-        <strong>🔐 登录</strong>
-        <button class="btn btn-sm" id="loginCancel">关闭</button>
-      </div>
-      <div class="modal-body">
-        <div class="row">
-          <label style="min-width:80px;">账号：</label>
-          <input id="loginUser" type="text" placeholder="admin" style="min-width:220px;">
+          <ul id="dirList"></ul>
         </div>
-        <div class="row">
-          <label style="min-width:80px;">密码：</label>
-          <input id="loginPass" type="password" placeholder="admin" style="min-width:220px;">
+        <div class="modal-foot">
+          <button class="btn" id="dirOk">使用此目录</button>
         </div>
       </div>
-      <div class="modal-foot">
-        <div></div>
-        <button class="btn" id="loginConfirm">登录</button>
+    </div>
+
+    <!-- 过滤器构造器弹窗 -->
+    <div id="filterModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-head">
+          <strong>过滤器构造器</strong>
+          <button class="btn btn-sm" id="filterClose">关闭</button>
+        </div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:8px;">
+          <label>where JSON：</label>
+          <textarea id="whereInput" style="width:100%;height:60px;"></textarea>
+          <label>where_document JSON：</label>
+          <textarea id="whereDocInput" style="width:100%;height:60px;"></textarea>
+        </div>
+        <div class="modal-foot">
+          <div></div>
+          <button class="btn" id="filterOk">确定</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- 全局加载层 -->
-  <div id="loading" class="loader" aria-hidden="true">
-    <div class="spinner hourglass"></div>
-    <div class="loading-text">正在处理，请稍候…</div>
-  </div>
+    <!-- 确认弹窗 -->
+    <div id="confirmModal" class="confirm-modal" style="display:none;">
+      <div class="confirm-modal-content">
+        <p id="confirmMessage"></p>
+        <div style="margin-top: 20px; text-align:right;">
+          <button class="btn" id="confirmCancel">取消</button>
+          <button class="btn" id="confirmOk">确认</button>
+        </div>
+      </div>
+    </div>
 
-  <!-- 带版本号避免缓存 -->
-  <script src="{{ url_for('static', filename='app_classic.js') }}?v=20250821a"></script>
+    <!-- 预览弹窗 -->
+    <div id="previewModal" class="preview-modal" style="display:none;">
+      <div class="preview-modal-content">
+        <div class="modal-head">
+          <strong id="previewTitle"></strong>
+          <button class="btn btn-sm" id="previewClose">关闭</button>
+        </div>
+        <div id="previewContent" class="preview-content"></div>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div id="settingsModal" class="confirm-modal" style="display:none;">
+      <div class="confirm-modal-content" style="max-width:760px;">
+        <div class="modal-head">
+          <strong>⚙️ 系统设置</strong>
+          <button class="btn btn-sm" id="settingsCancel">关闭</button>
+        </div>
+        <div class="modal-body">
+          <fieldset style="margin-bottom:12px;">
+            <legend>界面主题</legend>
+            <label class="pill"><input type="radio" name="theme" value="light"> 亮色调</label>
+            <label class="pill"><input type="radio" name="theme" value="dark"> 暗色调</label>
+            <label class="pill"><input type="radio" name="theme" value="system" checked> 跟随系统</label>
+          </fieldset>
+
+          <fieldset style="margin-bottom:12px;">
+            <legend>AI 设置</legend>
+            <div class="row">
+              <label style="min-width:90px;">提供方：</label>
+              <select id="aiProvider" style="min-width:160px;">
+                <option value="ollama">Ollama（本地）</option>
+                <option value="chatgpt">ChatGPT（远程）</option>
+                <option value="deepseek">DeepSeek（远程）</option>
+              </select>
+            </div>
+            <div class="row">
+              <label style="min-width:90px;">服务URL：</label>
+              <input id="aiUrl" type="text" placeholder="http://localhost:11434" style="min-width:320px;">
+            </div>
+            <div class="row">
+              <label style="min-width:90px;">API Key：</label>
+              <input id="aiApiKey" type="password" placeholder="可留空（本地Ollama不需要）" style="min-width:320px;">
+            </div>
+            <div class="row">
+              <label style="min-width:90px;">模型：</label>
+              <select id="aiModel" style="min-width:220px;">
+                <option value="">（稍后加载/或手动填写）</option>
+              </select>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>功能权限（管理员勾选开关）</legend>
+            <div class="row" style="flex-wrap:wrap; gap:10px;">
+              <label class="pill"><input type="checkbox" id="feat_text" checked> 文字</label>
+              <label class="pill"><input type="checkbox" id="feat_data" checked> 数据</label>
+              <label class="pill"><input type="checkbox" id="feat_slides" checked> 简报</label>
+              <label class="pill"><input type="checkbox" id="feat_pdf" checked> PDF</label>
+              <label class="pill"><input type="checkbox" id="feat_archive" checked> 压缩</label>
+              <label class="pill"><input type="checkbox" id="feat_image" checked> 图片</label>
+              <label class="pill"><input type="checkbox" id="feat_video" checked> 视频</label>
+              <label class="pill"><input type="checkbox" id="feat_audio" checked> 音频</label>
+              <label class="pill"><input type="checkbox" id="feat_ai_keywords" checked> AI关键词</label>
+              <label class="pill"><input type="checkbox" id="feat_move" checked> 移动</label>
+              <label class="pill"><input type="checkbox" id="feat_rename" checked> 重命名</label>
+              <label class="pill"><input type="checkbox" id="feat_delete" checked> 删除</label>
+              <label class="pill"><input type="checkbox" id="feat_image_caption"> 反向提示词</label>
+              <label class="pill"><input type="checkbox" id="feat_video_preview"> 视频预览</label>
+              <label class="pill"><input type="checkbox" id="feat_audio_preview"> 音频预览</label>
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-foot">
+          <div></div>
+          <button class="btn" id="settingsSave">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 登录弹窗 -->
+    <div id="loginModal" class="confirm-modal" style="display:none;">
+      <div class="confirm-modal-content" style="max-width:420px;">
+        <div class="modal-head">
+          <strong>🔐 登录</strong>
+          <button class="btn btn-sm" id="loginCancel">关闭</button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <label style="min-width:80px;">账号：</label>
+            <input id="loginUser" type="text" placeholder="admin" style="min-width:220px;">
+          </div>
+          <div class="row">
+            <label style="min-width:80px;">密码：</label>
+            <input id="loginPass" type="password" placeholder="admin" style="min-width:220px;">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <div></div>
+          <button class="btn" id="loginConfirm">登录</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全局加载层 -->
+    <div id="loading" class="loader" aria-hidden="true">
+      <div class="spinner hourglass"></div>
+      <div class="loading-text">正在处理，请稍候…</div>
+    </div>
+
+    <!-- 带版本号避免缓存 -->
+    <script src="{{ url_for('static', filename='app_classic.js') }}?v=20250821a"></script>
 </body>
+
 </html>

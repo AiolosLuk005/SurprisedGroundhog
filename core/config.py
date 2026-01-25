@@ -58,15 +58,14 @@ class AppConfig:
         return self._toml_config.get("logging", {})
 
     @property
-    def MYSQL_CONFIG(self) -> dict:
-        # Merge TOML config with potential env overrides or secure settings
-        base = self._toml_config.get("mysql", {})
+    def PG_CONFIG(self) -> dict:
+        base = self._toml_config.get("postgresql", {})
         return {
             "enable": bool(base.get("enable", False)),
             "host": base.get("host", "127.0.0.1"),
-            "port": int(base.get("port", 3306)),
-            "user": base.get("user", "root"),
-            "password": base.get("password", ""),
+            "port": int(base.get("port", 5432)),
+            "user": base.get("user", "postgres"),
+            "password": base.get("password", "password"),
             "database": base.get("database", "groundhog"),
         }
 
@@ -110,8 +109,8 @@ PAGE_SIZE_DEFAULT = int(CFG.get("page_size_default", 50))
 
 # Legacy objects adapted
 OLLAMA = CFG.AI_CONFIG
-MYSQL_CFG = CFG.MYSQL_CONFIG
-MYSQL_ENABLED = MYSQL_CFG["enable"]
+PG_CFG = CFG.PG_CONFIG
+PG_ENABLED = PG_CFG["enable"]
 TRASH_DIR = CFG.TRASH_DIR
 LOG_LEVEL = CFG.LOG_CONFIG.get("level", "INFO")
 LOG_FILE = CFG.LOG_CONFIG.get("file", "")

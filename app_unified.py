@@ -30,7 +30,7 @@ _setup_logging()
 ROOT_API_PATHS = {
     "/",
     "/scan", "/page",
-    "/export_csv", "/import_mysql",
+    "/export_csv",
     "/apply_ops",
     "/kw", "/keywords",
     "/update_keywords", "/clear_keywords",
@@ -69,19 +69,22 @@ def create_app() -> Flask:
     # --------------------------- Access Control ---------------------------
     @app.before_request
     def check_login_permission():
-        if request.path.startswith("/full/") and not request.path.endswith("/login"):
+        # 限制 /full/* 和 /db/* 需要登录
+        protected_paths = ("/full/", "/db/")
+        if any(request.path.startswith(p) for p in protected_paths) and not request.path.endswith("/login"):
             if "user" not in session:
                 if request.is_json or request.method == "POST":
                     return jsonify({"ok": False, "error": "未登录"}), 401
     @app.before_request
-    def _only_local_for_full():
-        """限制 /full/* 路由的访问来源。
+    def _only_local_for_sensitive():
+        """限制 /full/* 和 /db/* 路由的访问来源。
 
-        默认仅允许本机访问，以防同网段的其他设备操作你的文件。
+        默认仅允许本机访问，以防同网段的其他设备操作你的文件或查看数据库。
         如果在 ``config/settings.json`` 中将 ``allow_remote_full`` 设为 ``true``，
         则放开该限制。
         """
-        if request.path.startswith("/full"):
+        protected_paths = ("/full", "/db")
+        if any(request.path.startswith(p) for p in protected_paths):
             # 允许通过配置放开限制
             if SETTINGS.get("allow_remote_full"):
                 return None

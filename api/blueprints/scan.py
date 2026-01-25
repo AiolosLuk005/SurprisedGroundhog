@@ -7,7 +7,7 @@ import os
 
 from core.config import ALLOWED_ROOTS, DEFAULT_SCAN_DIR, PAGE_SIZE_DEFAULT, ENABLE_HASH_DEFAULT
 from core.utils.iterfiles import is_under_allowed_roots, iter_files
-from core.mysql_log import get_mysql_conn
+from core.pg_db import upsert_files
 
 bp = Blueprint("scan", __name__)
 
@@ -61,6 +61,7 @@ def scan():
         return jsonify({"ok": False, "error": "目录不在允许的根目录内"}), 400
 
     rows = [asdict(r) for r in iter_files(scan_dir, with_hash, category, types, recursive)]
+    
     total = len(rows)
     start, end = (page - 1) * page_size, (page * page_size)
     return jsonify({"ok": True, "data": rows[start:end], "total": total})

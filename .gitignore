@@ -25,6 +25,7 @@ __pycache__/
 output/
 state.json
 data/normalized/
+config.toml
 
 # -----------------------
 # Git LFS 管理大文件

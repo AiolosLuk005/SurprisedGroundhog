@@ -1,19 +1,19 @@
-allowed_roots = ["D:/Data", "E:/Shared"]
+allowed_roots = ["C:/", "D:/", "E:/", "F:/", "G:/"]
 port = 5005
 enable_hash = false
 page_size_default = 50
-ollama = { enable = true, model = "qwen2.5:latest", timeout_sec = 30 }
-[mysql]
-enable = false
+ollama = { enable = true, model = "llama3.1:latest", vision_model = "qwen3-vl:8b", timeout_sec = 120 }
+
+trash_dir = "D:/SurprisedGroundhog_Trash"
+
+[postgresql]
+enable = true
 host = "127.0.0.1"
-port = 3306
-user = "root"
-password = "your_password"
+port = 5432
+user = "postgres"
+password = "your_password_here"
 database = "groundhog"
-trash_dir = ""
 
 [logging]
-# 日志级别: DEBUG, INFO, WARNING, ERROR
 level = "INFO"
-# 为空则输出到控制台，否则输出到指定文件
 file = ""

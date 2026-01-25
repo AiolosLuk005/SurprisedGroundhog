@@ -7,7 +7,6 @@ from PIL import Image
 
 from core.utils.iterfiles import is_under_allowed_roots
 from core.settings import SETTINGS
-from core.mysql_log import log_op
 from core.normalize_runner import normalize_file
 # from core.config import SETTINGS as CFG_DICT # removed to fix import error
 
@@ -31,7 +30,6 @@ def apply_ops():
                 if not (src and is_under_allowed_roots(src)):
                     raise ValueError("路径不合法")
                 send2trash(src)
-                log_op("delete", src_path=src)
                 done += 1
 
             elif action == "move":
@@ -42,7 +40,6 @@ def apply_ops():
                     raise ValueError("路径不合法")
                 Path(dst_full).parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(src, dst_full)
-                log_op("move", src_path=src, dst_path=dst_full)
                 done += 1
                 
             elif action == "rename":
@@ -57,7 +54,6 @@ def apply_ops():
                 if not is_under_allowed_roots(str(dst_full)):
                     raise ValueError("目标路径不合法")
                 shutil.move(src, dst_full)
-                log_op("rename", src_path=src, dst_path=str(dst_full))
                 done += 1
             
             
