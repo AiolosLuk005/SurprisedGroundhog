@@ -10,8 +10,9 @@ from core.state import STATE, save_state
 from core.settings import SETTINGS
 from core.config import CFG
 from services.ai_keywords import AIKeywordService
+from services.image_keywords_ollama import OllamaImageKeywordService
 
-# Optional dependency
+# Optional dependency (legacy WD14 plugin, kept for fallback)
 try:
     from plugins.image_keywords_wd14 import ImageKeywordsWD14
 except ImportError:
@@ -133,27 +134,73 @@ def clear_keywords():
     save_state()
     return jsonify({"ok": True, "cleared": cleared})
 
+
 @bp.post("/keywords_image")
 def keywords_image():
-    if not ImageKeywordsWD14:
-         return jsonify({"ok": False, "error": "Image plugin not loaded"}), 500
-         
-    extractor = ImageKeywordsWD14()
+    """Generate image keywords using Ollama vision model (qwen3-vl:8b)."""
+    logger.info("/keywords_image called")
     
-    # ... (Logic identical to original routes.py for image upload/path)
-    # Simplified for brevity in this plan enactment, but full logic should be copied.
-    # Assume copying the original logic from routes.py here.
+    # Use Ollama vision model as primary extractor
+    use_ollama = SETTINGS.get("features", {}).get("use_ollama_vision", True)
     
+    if use_ollama:
+        extractor = OllamaImageKeywordService()
+        logger.info(f"Using Ollama vision model: {extractor.model}")
+    elif ImageKeywordsWD14:
+        extractor = ImageKeywordsWD14()
+        logger.info("Using WD14 plugin (fallback)")
+    else:
+        return jsonify({"ok": False, "error": "No image keyword extractor available"}), 500
+    
+    # Handle file upload
     upload = request.files.get("file")
     if upload:
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            upload.save(tmp)
-            tmp_path = tmp.name
+        tmp_path = None
         try:
-             res = extractor.extract(tmp_path)
-             tags = res.get("meta", {}).get("tags", [])
-             return jsonify({"ok": True, "keywords": tags})
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                upload.save(tmp)
+                tmp_path = tmp.name
+            logger.debug("Uploaded file saved to %s", tmp_path)
+            res = extractor.extract(tmp_path)
+            meta = res.get("meta", {})
+            err = meta.get("error")
+            if err:
+                logger.error("Extraction error for %s: %s", tmp_path, err)
+                return jsonify({"ok": False, "error": err})
+            tags = meta.get("tags", [])
+            logger.info("Extracted %d tags for uploaded file", len(tags))
+            return jsonify({"ok": True, "keywords": tags})
+        except Exception as e:
+            logger.error("Runtime failure for uploaded file: %s", e)
+            return jsonify({"ok": False, "error": str(e)}), 500
         finally:
-            if os.path.exists(tmp_path): os.unlink(tmp_path)
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+    
+    # Handle path-based extraction
+    data = request.get_json(silent=True) or {}
+    paths = data.get("paths", [])
+    logger.debug("Processing paths: %s", paths)
+    out = {}
+    for p in paths:
+        if not (p and is_under_allowed_roots(p) and os.path.isfile(p)):
+            continue
+        try:
+            res = extractor.extract(p)
+            meta = res.get("meta", {})
+            err = meta.get("error")
+            if err:
+                logger.error("Extraction error for %s: %s", p, err)
+                out[p] = {"ok": False, "error": err}
+            else:
+                tags = meta.get("tags", [])
+                logger.info("Extracted %d tags for %s", len(tags), p)
+                out[p] = {"ok": True, "keywords": tags}
+        except Exception as e:
+            logger.error("Runtime failure for %s: %s", p, e)
+            out[p] = {"ok": False, "error": str(e)}
+    return jsonify({"ok": True, "keywords": out})
 
-    return jsonify({"ok": False, "error": "Not fully implemented in refactor dummy"})

@@ -45,7 +45,21 @@ def apply_ops():
                 log_op("move", src_path=src, dst_path=dst_full)
                 done += 1
                 
-            # ... rename logic similar ...
+            elif action == "rename":
+                if not SETTINGS.get("features", {}).get("enable_rename", True):
+                    raise ValueError("重命名功能已禁用")
+                src = op.get("path")
+                new_name = op.get("new_name")
+                if not (src and new_name and is_under_allowed_roots(src)):
+                    raise ValueError("路径不合法")
+                src_path = Path(src)
+                dst_full = src_path.parent / new_name
+                if not is_under_allowed_roots(str(dst_full)):
+                    raise ValueError("目标路径不合法")
+                shutil.move(src, dst_full)
+                log_op("rename", src_path=src, dst_path=str(dst_full))
+                done += 1
+            
             
         except Exception as e:
             errors.append(f"操作 {op.get('action')} 失败：{e}")
