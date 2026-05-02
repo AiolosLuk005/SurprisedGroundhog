@@ -31,6 +31,27 @@
   let currentPage = 1, totalPages = 1, total = 0;
   let opMode = null; // 当前批量操作模式：move/rename/delete
   let filterWhere = null, filterWhereDoc = null; // 搜索过滤器
+  let currentTheme = 'system';
+
+  function applyTheme(theme) {
+    currentTheme = theme || 'system';
+    const html = document.documentElement;
+    if (currentTheme === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+    } else if (currentTheme === 'light') {
+      html.setAttribute('data-theme', 'light');
+    } else {
+      html.removeAttribute('data-theme');
+    }
+    console.log('Theme applied:', currentTheme);
+  }
+
+  // Listen for system theme changes if in 'system' mode
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (currentTheme === 'system') {
+      applyTheme('system');
+    }
+  });
 
   function setOpMode(mode) {
     opMode = mode;
@@ -223,7 +244,17 @@
         <td><input class="rn" placeholder="新文件名" disabled></td>
         <td><button class="btn btn-sm pv" ${previewDisabled ? 'disabled' : ''} data-path="${full}" data-ext="${ext}" data-cat="${it.category || ''}">预览</button></td>`;
       const ck = tr.querySelector('.ck');
-      ck.addEventListener('change', updateRowInputs);
+      ck.addEventListener('change', () => {
+        updateRowInputs();
+        // Update select-all checkbox state
+        const allChecked = $$('#tbl tbody .ck').every(cb => cb.checked);
+        const anyChecked = $$('#tbl tbody .ck').some(cb => cb.checked);
+        const selectAll = $('#selectAll');
+        if (selectAll) {
+          selectAll.checked = allChecked;
+          selectAll.indeterminate = !allChecked && anyChecked;
+        }
+      });
       tbody.appendChild(tr);
     });
     updateRowInputs();
@@ -255,6 +286,8 @@
     area.innerHTML = '';
     items.forEach(it => {
       const content = it.document || it.text || it.content || '';
+      const name = it.name || it.filename || it.path?.split(/[\\\/]/).pop() || 'Untitled';
+      const path = it.path || it.full || it.fullpath || '';
       let html = highlightText(content, $('#searchInput')?.value || '');
       let extra = '';
       if (isImageResult(it)) {
@@ -263,7 +296,13 @@
         const fold = near.length ? `<details><summary>近重复(${near.length})</summary>${near.map(n => `<div>${n.path || n}</div>`).join('')}</details>` : '';
         extra = `<div class="img-extra">相似度:${sim} ${fold}</div>`;
       }
-      area.innerHTML += `<div class="result-item">${extra}<div class="result-text">${html}</div></div>`;
+      area.innerHTML += `
+        <div class="result-item">
+          <div class="result-name">${name}</div>
+          <div class="result-path">${path}</div>
+          ${extra}
+          <div class="result-text">${html}</div>
+        </div>`;
     });
   }
 
@@ -423,9 +462,11 @@
       }
     };
     await fetch('/full/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+    applyTheme(payload.theme);
+    applyFeatureToggles(payload);
     alert('已保存');
     $('#settingsModal').style.display = 'none';
-    location.reload();
+    // location.reload(); // Removed reload for smoother experience
   }
 
   function onExport() {
@@ -524,12 +565,19 @@
     customConfirm(`完成 ${j.done} 项${j.errors?.length ? `，失败 ${j.errors.length} 项` : ''}`).then(() => { });
   }
   async function onNormalize() {
-    const selected = $$("#tbl tbody .ck:checked");
+    const selected = $("#tbl tbody .ck:checked");
     if (selected.length === 0) { customConfirm("请选择要规范化的文件").then(() => { }); return; }
     const files = selected.map(cb => cb.dataset.path);
     const strategy = $("#normStrategy")?.value || "fallback";
+    const toSourceDir = $("#normToSourceDir")?.checked;
+    const output_mode = toSourceDir ? "source_dir" : "centralized";
+
     toggleLoading(true, "正在规范化…");
-    const res = await firstOK(PATHS.normalize, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files, on_unsupported: strategy }) });
+    const res = await firstOK(PATHS.normalize, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ files, on_unsupported: strategy, output_mode })
+    });
     toggleLoading(false);
     if (!res.ok) { customConfirm("规范化失败：" + res.error).then(() => { }); return; }
     const j = await res.r.json();
@@ -550,19 +598,35 @@
   async function genKw(forceLLM = false) {
     const selected = $$('#tbl tbody .ck:checked');
     if (selected.length === 0) { customConfirm('请选择要提取关键词的文件').then(() => { }); return; }
+
     const onlyEmpty = $('#kwOnlyEmpty')?.checked;
+    const forceReprocess = $('#kwForceReprocess')?.checked;
+
+    // Filter targets based on options
     const targets = selected.filter(cb => {
       const kw = cb.closest('tr').querySelector('.kw').textContent.trim();
+
+      // If force reprocess is enabled, process all selected files
+      if (forceReprocess) return true;
+
+      // Otherwise, only process empty if that option is checked
       return !onlyEmpty || !kw;
     });
-    if (targets.length === 0) { customConfirm('没有可处理的文件').then(() => { }); return; }
+
+    if (targets.length === 0) {
+      const msg = forceReprocess ? '没有选中文件' : '所有选中文件都已有关键词，请勾选"强制重新处理"';
+      customConfirm(msg).then(() => { });
+      return;
+    }
+
     const paths = targets.map(cb => cb.dataset.path);
     let seeds = $('#kwSeeds')?.value || '';
     seeds = seeds.replace(/[；;]/g, ',').split(',').map(s => s.trim()).filter(Boolean);
     seeds = Array.from(new Set(seeds)).join(',');
     const strategy = $('#kwStrategy')?.value || 'hybrid';
+    const kwLen = parseInt($('#kw_len')?.value) || 50;
     toggleLoading(true, '正在提取关键词…');
-    const body = { paths, seeds, strategy, force_llm: !!forceLLM };
+    const body = { paths, seeds, strategy, force_llm: !!forceLLM, max_chars: kwLen };
     const res = await firstOK(PATHS.kw, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     toggleLoading(false);
     if (!res.ok) { customConfirm('提取失败：' + res.error).then(() => { }); return; }
@@ -641,9 +705,11 @@
       const res = await fetch('/full/settings', { credentials: 'include' });
       const s = await res.json();
       applyFeatureToggles(s || {});
+      if (s.theme) applyTheme(s.theme);
     } catch (e) {
       console.warn('读取设置失败', e);
       applyFeatureToggles({});
+      applyTheme('system');
     }
 
     fillTypes();
@@ -694,8 +760,24 @@
         setOpMode(null);
         onApplyOps('delete');
       }
-    });
+    })
     $('#tbl')?.addEventListener('click', onPreview);
+
+    // Select-all checkbox functionality
+    bind('#selectAll', 'change', (e) => {
+      const checked = e.target.checked;
+      $$('#tbl tbody .ck').forEach(cb => {
+        cb.checked = checked;
+      });
+      updateRowInputs();
+    });
+
+    bind('#kw_len', 'input', (e) => {
+      const val = e.target.value;
+      const display = $('#kw_len_val');
+      if (display) display.textContent = val;
+    });
+
 
     // 顶栏：设置 / 登录 / 登出 / 用户名
     const userTools = $('#userTools');

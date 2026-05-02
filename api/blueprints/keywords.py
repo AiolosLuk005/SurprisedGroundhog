@@ -47,7 +47,7 @@ def gen_keywords():
     seeds_raw = (data.get("seeds") or "").strip()
     strategy = (data.get("strategy") or "hybrid").lower()
     force_llm = bool(data.get("force_llm"))
-    max_chars = int(CFG.get("keywords", {}).get("max_chars", 50))
+    max_chars = int(data.get("max_chars") or CFG.get("keywords", {}).get("max_chars", 50))
     
     # We simplified the service to `map_reduce_keywords`.
     # For now, if strategy is 'llm' or 'hybrid'+force_llm, we use the service.

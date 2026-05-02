@@ -47,13 +47,31 @@ def _calc_fingerprint(p: Path) -> tuple[str, float]:
     return sha256, mtime
 
 
-def normalize_file(path: str, out_root: Path, on_unsupported: str = "fallback") -> NormalizeResult:
+def normalize_file(path: str, out_root: Path, on_unsupported: str = "fallback", output_mode: str = "centralized") -> NormalizeResult:
+    """
+    Normalize a file to markdown/csv format.
+    
+    Args:
+        path: Source file path
+        out_root: Output root directory (used only in centralized mode)
+        on_unsupported: How to handle unsupported files ("skip", "ledger", "fallback")
+        output_mode: Where to save output ("centralized" or "source_dir")
+    """
     _ensure_plugins()
     p = Path(path)
-    out_root = Path(out_root)
-    out_root.mkdir(parents=True, exist_ok=True)
-    doc_id = uuid.uuid5(uuid.NAMESPACE_URL, str(p.resolve())).hex[:12]
-    doc_dir = out_root / doc_id
+    
+    # Determine output directory based on mode
+    if output_mode == "source_dir":
+        # Save to source directory: /path/to/file.pdf -> /path/to/file_normalized/
+        doc_id = uuid.uuid5(uuid.NAMESPACE_URL, str(p.resolve())).hex[:12]
+        doc_dir = p.parent / f"{p.stem}_normalized"
+    else:
+        # Centralized mode (original behavior)
+        out_root = Path(out_root)
+        out_root.mkdir(parents=True, exist_ok=True)
+        doc_id = uuid.uuid5(uuid.NAMESPACE_URL, str(p.resolve())).hex[:12]
+        doc_dir = out_root / doc_id
+    
     sidecar_path = doc_dir / "sidecar.json"
 
     sha256, mtime = _calc_fingerprint(p)
@@ -83,6 +101,7 @@ def normalize_file(path: str, out_root: Path, on_unsupported: str = "fallback") 
                             "mtime": mtime,
                             "sha256": sha256,
                             "created_at": datetime.utcnow().isoformat(),
+                            "output_mode": output_mode,
                         }
                         sidecar_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
                         res.sidecar = str(sidecar_path)
@@ -101,6 +120,7 @@ def normalize_file(path: str, out_root: Path, on_unsupported: str = "fallback") 
         "mtime": mtime,
         "sha256": sha256,
         "created_at": datetime.utcnow().isoformat(),
+        "output_mode": output_mode,
     }
     md_paths: List[str] = []
     csv_paths: List[str] = []

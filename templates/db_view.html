@@ -1,27 +1,130 @@
 <!doctype html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="utf-8">
   <title>Surprised Groundhog - 数据库浏览器</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    .db-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
-    .search-bar { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-    .search-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    .db-table-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
-    .db-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .db-table th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #eee; color: #444; }
-    .db-table td { padding: 12px; border-bottom: 1px solid #f0f0f0; color: #555; vertical-align: top; }
-    .db-table tr:hover { background: #fcfcfc; }
-    .keyword-badge { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 4px; margin-bottom: 4px; }
-    .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; align-items: center; }
-    .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .status-tag { font-size: 12px; padding: 2px 6px; border-radius: 4px; }
-    .status-enabled { background: #e6fffa; color: #38a169; }
-    .status-disabled { background: #fff5f5; color: #e53e3e; }
+    .db-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    .search-bar {
+      background: var(--color-bg-card);
+      padding: 15px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--color-border);
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      background: var(--color-bg-app);
+      color: var(--color-text-primary);
+    }
+
+    .db-table-card {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+    }
+
+    .db-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .db-table th {
+      background: var(--color-divider);
+      padding: 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--color-border);
+      color: var(--color-text-secondary);
+    }
+
+    .db-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--color-divider);
+      color: var(--color-text-primary);
+      vertical-align: top;
+    }
+
+    .keyword-badge {
+      display: inline-block;
+      background: var(--color-accent-light);
+      color: var(--color-accent);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-right: 4px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .kw-cell {
+      max-height: 80px;
+      overflow-y: auto;
+      display: block;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+      align-items: center;
+    }
+
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .status-tag {
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .status-enabled {
+      background: #e6fffa;
+      color: #38a169;
+    }
+
+    .status-disabled {
+      background: #fff5f5;
+      color: #e53e3e;
+    }
+
+    [data-theme="dark"] .status-enabled {
+      background: #1a4d46;
+      color: #4fd1c5;
+    }
+
+    [data-theme="dark"] .status-disabled {
+      background: #63171b;
+      color: #feb2b2;
+    }
   </style>
 </head>
+
 <body>
   <div class="topbar">
     <div style="display:flex;align-items:center">
@@ -29,17 +132,17 @@
       <h2 class="brand">Surprised Groundhog</h2>
     </div>
     <div style="display:flex; gap:15px; align-items:center;">
-        <a href="/full/" style="color:#fff; text-decoration:none;">🏠 扫描首页</a>
-        <span class="status-tag {% if pg_enabled %}status-enabled{% else %}status-disabled{% endif %}">
-            PostgreSQL: {% if pg_enabled %}已启用{% else %}未启用{% endif %}
-        </span>
+      <a href="/full/" style="color:var(--color-accent); text-decoration:none; font-weight:600;">🏠 扫描首页</a>
+      <span class="status-tag {% if pg_enabled %}status-enabled{% else %}status-disabled{% endif %}">
+        PostgreSQL: {% if pg_enabled %}已启用{% else %}未启用{% endif %}
+      </span>
     </div>
   </div>
 
   <div class="db-container">
     <div class="nav-header">
-        <h3>🗄️ 数据库档案（PostgreSQL）</h3>
-        <div id="resultCount" style="color:#666; font-size:14px;"></div>
+      <h3>🗄️ 数据库档案（PostgreSQL）</h3>
+      <div id="resultCount" style="color:#666; font-size:14px;"></div>
     </div>
 
     <div class="search-bar">
@@ -79,11 +182,11 @@
       currentPage = page;
       const search = document.getElementById('dbSearch').value;
       const url = `/db/api/files?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(search)}`;
-      
+
       try {
         const resp = await fetch(url);
         const res = await resp.json();
-        
+
         if (!res.ok) {
           alert("加载失败: " + res.error);
           return;
@@ -91,16 +194,16 @@
 
         const tbody = document.getElementById('dbBody');
         tbody.innerHTML = '';
-        
+
         res.data.forEach(item => {
           const tr = document.createElement('tr');
           const keywordsHtml = (item.keywords || []).map(kw => `<span class="keyword-badge">${kw}</span>`).join('');
-          
+
           tr.innerHTML = `
-            <td style="word-break:break-all;"><strong>${item.name}</strong><br><small style="color:#999">${item.ext}</small></td>
-            <td style="word-break:break-all; font-size:12px; color:#666;">${item.dir_path}</td>
+            <td style="word-break:break-all;"><strong>${item.name}</strong><br><small style="color:var(--color-text-secondary)">${item.ext}</small></td>
+            <td style="word-break:break-all; font-size:12px; color:var(--color-text-secondary);">${item.dir_path}</td>
             <td>${(item.size_bytes / 1024).toFixed(1)} KB</td>
-            <td>${keywordsHtml}</td>
+            <td><div class="kw-cell">${keywordsHtml}</div></td>
             <td style="font-size:12px;">${item.last_scanned}</td>
           `;
           tbody.appendChild(tr);
@@ -121,13 +224,31 @@
       loadData(currentPage + delta);
     }
 
+    // Theme handling
+    async function initTheme() {
+      try {
+        const resp = await fetch('/full/settings');
+        const s = await resp.json();
+        if (s.theme) {
+          const html = document.documentElement;
+          if (s.theme === 'dark') html.setAttribute('data-theme', 'dark');
+          else if (s.theme === 'light') html.setAttribute('data-theme', 'light');
+          else html.removeAttribute('data-theme');
+        }
+      } catch (e) { console.warn('Failed to load theme', e); }
+    }
+
     // Initial load
-    window.onload = () => loadData(1);
+    window.onload = () => {
+      initTheme();
+      loadData(1);
+    };
 
     // Enter key support
     document.getElementById('dbSearch').onkeypress = (e) => {
-        if(e.key === 'Enter') loadData(1);
+      if (e.key === 'Enter') loadData(1);
     };
   </script>
 </body>
+
 </html>

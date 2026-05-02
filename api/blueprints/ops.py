@@ -69,6 +69,8 @@ def normalize_endpoint():
     files = data.get("files") or []
     strategy = data.get("on_unsupported") or "fallback"
     collection = data.get("collection") or "default"
+    output_mode = data.get("output_mode") or "centralized"  # "centralized" or "source_dir"
+    
     # Fix: Get normalize config correctly from settings or config
     base_dir = "data/normalized" # default
     out_root = Path(base_dir) / collection
@@ -76,9 +78,9 @@ def normalize_endpoint():
     results = []
     for f in files:
         try:
-            res = normalize_file(f, out_root, on_unsupported=strategy)
+            res = normalize_file(f, out_root, on_unsupported=strategy, output_mode=output_mode)
             results.append({
-                "path": f, "ok": res.ok, "doc_id": res.doc_id
+                "path": f, "ok": res.ok, "doc_id": res.doc_id, "out_dir": res.out_dir
             })
         except Exception as e:
              results.append({"path": f, "ok": False, "error": str(e)})

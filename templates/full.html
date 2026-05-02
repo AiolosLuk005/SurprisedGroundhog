@@ -21,10 +21,11 @@
       width: 760px;
       max-width: 92vw;
       margin: 10vh auto;
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 16px 48px rgba(0, 0, 0, .18);
-      padding: 10px 12px
+      background: var(--color-bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-float);
+      padding: 10px 12px;
+      border: 1px solid var(--color-border);
     }
 
     .modal-head,
@@ -66,7 +67,8 @@
       display: none;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, .65);
+      background: var(--color-bg-app);
+      opacity: 0.8;
       z-index: 99999;
       text-align: center;
     }
@@ -78,8 +80,8 @@
     .spinner {
       width: 44px;
       height: 44px;
-      border: 4px solid #e5e7eb;
-      border-top-color: #111827;
+      border: 4px solid var(--color-divider);
+      border-top-color: var(--color-accent);
       border-radius: 50%;
       animation: spin .9s linear infinite;
       margin: 12px auto;
@@ -114,12 +116,12 @@
 
     .spinner.hourglass:before {
       top: 0;
-      border-bottom: 14px solid #111827;
+      border-bottom: 14px solid var(--color-accent);
     }
 
     .spinner.hourglass:after {
       bottom: 0;
-      border-top: 14px solid #111827;
+      border-top: 14px solid var(--color-accent);
       animation-delay: .6s;
     }
 
@@ -137,7 +139,7 @@
 
     .loading-text {
       font-size: 12px;
-      color: #444;
+      color: var(--color-text-secondary);
     }
 
     /* 确认 / 预览弹窗 */
@@ -154,12 +156,13 @@
 
     .confirm-modal-content,
     .preview-modal-content {
-      background: #fff;
+      background: var(--color-bg-card);
       padding: 20px;
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
       max-width: 680px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-float);
       text-align: left;
+      border: 1px solid var(--color-border);
     }
 
     .preview-content {
@@ -195,7 +198,7 @@
     <div class="card-section">
       <div class="toolbar" id="searchToolbar">
         <strong style="color:var(--color-accent)">🔍 检索</strong>
-        <div style="width:1px;height:20px;background:#eee;margin:0 8px;"></div>
+        <div style="width:1px;height:20px;background:var(--color-border);margin:0 8px;"></div>
         <input id="searchInput" type="text" placeholder="输入内容进行混合检索…" style="min-width:300px;">
         <label>k：</label>
         <input id="searchK" type="number" value="5" min="1" max="100" style="width:60px;">
@@ -250,13 +253,21 @@
         <button class="btn" id="applyRenameBtn">重命名</button>
         <button class="btn" id="applyDeleteBtn" style="color:#d32d27;">删除</button>
       </div>
-      <div class="toolbar" style="background:#f9f9f9; padding:8px; border-radius:4px;">
+      <div class="toolbar" style="background:var(--color-divider); padding:8px; border-radius:var(--radius-md);">
         <span class="badge" style="background:var(--color-accent-light);color:var(--color-accent)">AI 工具</span>
         <input id="kwSeeds" type="text" placeholder="生成前缀/种子词..." style="width:180px;">
+        <label class="pill"><input type="checkbox" id="kwOnlyEmpty" checked> 仅处理无关键词项</label>
+        <label class="pill"><input type="checkbox" id="kwForceReprocess"> 强制重新处理</label>
+        <div style="display:flex; align-items:center; gap:5px; margin:0 5px;">
+          <label style="font-size:12px; white-space:nowrap;">长度:</label>
+          <input type="range" id="kw_len" min="10" max="200" value="50" step="10" style="width:100px;">
+          <span id="kw_len_val" style="font-size:12px; min-width:25px;">50</span>
+        </div>
         <button class="btn" id="genKwBtn">提取关键词</button>
         <button class="btn" id="aiRefineBtn">AI 精修</button>
         <button class="btn" id="btnImgKW">图片分析</button>
-        <div style="width:1px;height:20px;background:#ddd;margin:0 4px;"></div>
+        <div style="width:1px;height:20px;background:var(--color-border);margin:0 4px;"></div>
+        <label class="pill"><input type="checkbox" id="normToSourceDir" checked> 保存到源目录</label>
         <button class="btn" id="normalizeBtn">规范化转换</button>
       </div>
     </div>
@@ -281,7 +292,7 @@
         </colgroup>
         <thead>
           <tr>
-            <th>选</th>
+            <th><input type="checkbox" id="selectAll" title="全选/取消全选"></th>
             <th>文件名</th>
             <th>完整路径</th>
             <th>扩展名</th>
